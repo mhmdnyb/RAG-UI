@@ -3,7 +3,7 @@ function ChatInput() {
   return (
     <>
       <title>Chat</title>
-      <div className="sm:w-md w-90 h-12 ring-1 ring-white/50 has-focus:ring-white/60 has-focus:ring-2 transition-all rounded-md text-gray-100 flex items-center bg-linear-to-bl from-black/30 to-black/10 backdrop-blur-2xl shadow-2xs shadow-white/30 mx-auto mb-20">
+      <div className="sm:w-md w-90 h-12 ring-1 ring-white/50 has-focus:ring-white/60 has-focus:ring-2 transition-all rounded-md text-gray-100 flex items-center bg-linear-to-bl from-black/30 to-black/10 backdrop-blur-2xl shadow-2xs shadow-white/30 mx-auto mb-20 duration-100">
         <input
           type="text"
           name="message"
