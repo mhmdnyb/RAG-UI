@@ -8,7 +8,7 @@ function ChatPage() {
     { text: "yo bro", sender: "bot" },
   ]);
   return (
-    <div className="flex flex-col justify-between h-dvh">
+    <div className="flex flex-col justify-between gap-y-1.5 h-dvh">
       <section className="overflow-y-auto sm:w-lg w-96 h-full mx-auto mt-4  space-y-2">
         {data.map((message) => {
           return (
