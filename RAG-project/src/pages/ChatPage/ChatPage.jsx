@@ -14,7 +14,7 @@ function ChatPage() {
   return (
     <div className="flex flex-col justify-between gap-y-1.5 h-dvh">
       <section
-        className="overflow-y-auto sm:w-lg w-96 h-full mx-auto mt-4  space-y-2"
+        className="overflow-y-auto sm:w-lg w-96 h-full mx-auto px-1.5 mt-4  space-y-2"
         ref={chatRef}
       >
         {data.map((message) => {
@@ -22,6 +22,7 @@ function ChatPage() {
             <ChatMessages
               text={message.text}
               sender={message.sender}
+              key={crypto.randomUUID()}
             ></ChatMessages>
           );
         })}
