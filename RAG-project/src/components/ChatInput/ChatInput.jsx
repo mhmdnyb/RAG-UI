@@ -1,10 +1,30 @@
 import "./ChatInput.css";
-function ChatInput() {
+import { useRef } from "react";
+function ChatInput({ data, setData }) {
+  const inputRef = useRef();
+  function sendMessage() {
+    if (!inputRef.current.value.trim()) {
+      inputRef.current.value = "";
+      return;
+    }
+    setData([...data, { text: inputRef.current.value, sender: "user" }]);
+    inputRef.current.value = "";
+  }
   return (
     <>
       <title>Chat</title>
       <div className="sm:w-md w-90 h-12 ring-1 ring-white/50 has-focus:ring-white/60 has-focus:ring-2 transition-all rounded-md text-gray-100 flex items-center bg-linear-to-bl from-black/30 to-black/10 backdrop-blur-2xl shadow-2xs shadow-white/30 mx-auto mb-20 duration-100">
         <input
+          onKeyDown={(e) => {
+            switch (e.key) {
+              case "Enter":
+                sendMessage();
+                break;
+              case "Escape":
+                inputRef.current.value = "";
+            }
+          }}
+          ref={inputRef}
           type="text"
           name="message"
           id="message"
@@ -12,6 +32,9 @@ function ChatInput() {
           placeholder={"Ask"}
         />
         <svg
+          onClick={() => {
+            sendMessage();
+          }}
           className="mr-1.5 cursor-pointer opacity-80 active:opacity-100 transition-opacity"
           width="30px"
           height="30px"
