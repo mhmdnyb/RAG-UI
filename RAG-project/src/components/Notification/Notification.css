@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@theme {
+  --color-dominant: #262626;
+  --color-dominant-surface: #1e1e1e;
+
+  --color-thirtypercent: #d3fbd8;
+  --color-thirtypercent-light: #e0ffef;
+  --color-thirtypercent-muted: #8ca391;
+
+  --color-tenpercent: #00c6cf;
+  --color-tenpercent-dark: #00aab2;
+
+  --animate-notification: notif 300ms ease-out 1 both;
+
+  @keyframes notif {
+    from {
+      opacity: 0;
+      transform: scale(1.03);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+}

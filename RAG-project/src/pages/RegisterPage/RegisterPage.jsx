@@ -1,7 +1,9 @@
 import "./RegisterPage.css";
 import uscLogo from "../../assets/usc.png";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import Notification from "../../components/Notification/Notification";
 function RegisterPage() {
+  const [modal, setModal] = useState(false);
   const formRef = useRef();
   async function register(credentials) {
     try {
@@ -13,6 +15,7 @@ function RegisterPage() {
       });
       if (response.ok) {
         const data = await response.json();
+        setModal(true);
         console.log(data);
       }
     } catch (error) {
@@ -21,6 +24,7 @@ function RegisterPage() {
   }
   return (
     <>
+      {modal && <Notification text={"test"} setModal={setModal}></Notification>}
       <title>Register</title>
       <section className="w-screen h-dvh flex items-center justify-center bg-dominant text-thirtypercent">
         <form
