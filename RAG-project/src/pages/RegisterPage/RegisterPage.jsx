@@ -1,12 +1,30 @@
 import "./RegisterPage.css";
 import uscLogo from "../../assets/usc.png";
-
+import { useRef } from "react";
 function RegisterPage() {
+  const formRef = useRef();
+  async function register(credentials) {
+    try {
+      const response = await fetch("http://localhost:8080/register", {
+        method: "POST",
+
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(credentials),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log(data);
+      }
+    } catch (error) {
+      console.log(error);
+    }
+  }
   return (
     <>
       <title>Register</title>
       <section className="w-screen h-dvh flex items-center justify-center bg-dominant text-thirtypercent">
         <form
+          ref={formRef}
           action="index.php"
           className="bg-dominant-surface/80 backdrop-blur-md border border-thirtypercent/20 shadow-xl rounded-xl space-y-4 p-6"
         >
@@ -46,8 +64,14 @@ function RegisterPage() {
           </div>
 
           <button
+            onClick={(e) => {
+              e.preventDefault();
+              const form = new FormData(formRef.current);
+              const data = Object.fromEntries(form);
+              register(data);
+            }}
             type="submit"
-            className="bg-tenpercent text-dominant font-semibold py-2 px-8 rounded-md hover:bg-tenpercent-dark transition-colors shadow-sm block mx-auto"
+            className="bg-tenpercent text-dominant font-semibold py-2 px-8 rounded-md hover:bg-tenpercent-dark transition-colors shadow-sm block mx-auto cursor-pointer"
           >
             Register
           </button>
