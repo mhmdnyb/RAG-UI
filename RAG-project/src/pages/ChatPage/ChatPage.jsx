@@ -5,8 +5,8 @@ import { useEffect, useRef, useState } from "react";
 function ChatPage() {
   const chatRef = useRef();
   const [data, setData] = useState([
-    { text: "hello", sender: "user" },
-    { text: "yo bro", sender: "bot" },
+    { text: "hello", sender: "user", id: 1 },
+    { text: "yo bro", sender: "bot", id: 2 },
   ]);
   useEffect(() => {
     chatRef.current.scrollBy({ top: window.innerHeight, behavior: "smooth" });
@@ -22,7 +22,7 @@ function ChatPage() {
             <ChatMessages
               text={message.text}
               sender={message.sender}
-              key={crypto.randomUUID()}
+              key={message.id}
             ></ChatMessages>
           );
         })}
