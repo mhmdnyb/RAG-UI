@@ -35,7 +35,7 @@ function ChatInput({ data, setData }) {
           onClick={() => {
             sendMessage();
           }}
-          className="mr-1.5 cursor-pointer opacity-80 active:opacity-100 transition-opacity"
+          className="mr-1.5 cursor-pointer opacity-80 active:opacity-100 active:scale-105 transition-all"
           width="30px"
           height="30px"
           viewBox="0 0 24 24"
