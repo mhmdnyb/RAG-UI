@@ -24,7 +24,9 @@ function RegisterPage() {
   }
   return (
     <>
-      {modal && <Notification text={"test"} setModal={setModal}></Notification>}
+      {modal && (
+        <Notification text={"Success!"} setModal={setModal}></Notification>
+      )}
       <title>Register</title>
       <section className="w-screen h-dvh flex items-center justify-center bg-dominant text-thirtypercent">
         <form
