@@ -25,24 +25,6 @@ public class LoginController {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
-    @GetMapping
-    public ApiResponse<Void> checkLogin(){
-
-        Authentication currentAuthentication =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        if (currentAuthentication != null
-                && currentAuthentication.isAuthenticated()
-                && !(currentAuthentication instanceof AnonymousAuthenticationToken)) {
-
-            throw new UserException(UserErrorCode.AlreadyAuthenticated);
-        }
-
-        return ApiResponse.<Void>builder()
-                .status("OK")
-                .build();
-    }
-
     @PostMapping
     public ApiResponse<LoginResponse> login(@RequestBody LoginRequest request) {
 

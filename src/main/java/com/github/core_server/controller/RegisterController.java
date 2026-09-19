@@ -19,24 +19,6 @@ public class RegisterController {
 
     private final UserService userService;
 
-    @GetMapping
-    public ApiResponse<Void> checkLogin(){
-
-        Authentication currentAuthentication =
-                SecurityContextHolder.getContext().getAuthentication();
-
-        if (currentAuthentication != null
-                && currentAuthentication.isAuthenticated()
-                && !(currentAuthentication instanceof AnonymousAuthenticationToken)) {
-
-            throw new UserException(UserErrorCode.AlreadyAuthenticated);
-        }
-
-        return ApiResponse.<Void>builder()
-                .status("OK")
-                .build();
-    }
-
     @PostMapping
     public ApiResponse<UserResponse> register(
             @RequestBody CreateUserRequest request
