@@ -1,10 +1,10 @@
 import "./RegisterPage.css";
 import uscLogo from "../../assets/usc.png";
-import { useRef, useState } from "react";
-import Notification from "../../components/Notification/Notification";
+import { useRef } from "react";
+
 import { Link } from "react-router";
+import toast from "react-hot-toast";
 function RegisterPage() {
-  const [modal, setModal] = useState(false);
   const formRef = useRef();
   async function register(credentials) {
     try {
@@ -16,7 +16,8 @@ function RegisterPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        setModal(true);
+        // setModal(true);
+        toast.success("موفقیت آمیز بود");
         console.log(data);
       }
     } catch (error) {
@@ -25,9 +26,6 @@ function RegisterPage() {
   }
   return (
     <>
-      {modal && (
-        <Notification text={"Success!"} setModal={setModal}></Notification>
-      )}
       <title>Register</title>
       <section className="w-screen h-dvh flex items-center justify-center bg-dominant text-thirtypercent">
         <form

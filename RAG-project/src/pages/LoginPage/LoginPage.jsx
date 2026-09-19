@@ -1,11 +1,9 @@
 import "./LoginPage.css";
 import uscLogo from "../../assets/usc.png";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { Link } from "react-router";
-
-import Notification from "../../components/Notification/Notification";
+import toast from "react-hot-toast";
 function LoginPage() {
-  const [modal, setModal] = useState(false);
   const formRef = useRef();
   function setCookie(token) {
     document.cookie = `token=${token};expires=${new Date(Date.now() + 7 * 24 * 3600 * 1000).toUTCString()};path=/;`;
@@ -21,7 +19,7 @@ function LoginPage() {
       if (response.ok) {
         const data = await response.json();
         setCookie(data.data.token);
-        setModal(true);
+        toast.success("خوش اومدی!");
         console.log(data);
       }
     } catch (error) {
@@ -30,9 +28,6 @@ function LoginPage() {
   }
   return (
     <>
-      {modal && (
-        <Notification text={"Welcome back!"} setModal={setModal}></Notification>
-      )}
       <title>Login</title>
       <section className="w-screen h-dvh flex items-center justify-center bg-dominant text-thirtypercent">
         <form
