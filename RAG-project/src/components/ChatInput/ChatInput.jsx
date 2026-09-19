@@ -12,8 +12,7 @@ function ChatInput({ data, setData }) {
   }
   return (
     <>
-      <title>Chat</title>
-      <div className="sm:w-md w-90 h-12 ring-1 ring-white/50 has-focus:ring-white/60 has-focus:ring-2 transition-all rounded-md text-gray-100 flex items-center bg-linear-to-bl from-black/30 to-black/10 backdrop-blur-2xl shadow-2xs shadow-white/30 mx-auto mb-20 duration-100">
+      <div className="sm:w-md min-w-75 h-12 ring-1 ring-white/50 has-focus:ring-white/60 has-focus:ring-2 transition-all rounded-md text-gray-100 flex items-center bg-linear-to-bl from-black/30 to-black/10 backdrop-blur-2xl shadow-2xs shadow-white/30 mx-auto mb-20 duration-100 -z-10">
         <input
           dir="ltr"
           onKeyDown={(e) => {

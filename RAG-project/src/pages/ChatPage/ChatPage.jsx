@@ -13,11 +13,12 @@ function ChatPage() {
     chatRef.current.scrollBy({ top: window.innerHeight, behavior: "smooth" });
   }, [data]);
   return (
-    <div className="flex flex-col justify-between gap-y-1.5 h-dvh">
+    <div className="flex flex-col justify-between gap-y-1.5 h-dvh overflow-hidden relative">
+      <title>Chat</title>
       <Header></Header>
       <section
         dir="ltr"
-        className="overflow-y-auto sm:w-lg w-96 h-full mx-auto px-1.5 mt-4  space-y-2"
+        className="overflow-y-auto sm:w-lg min-w-85 h-full mx-auto px-1.5 mt-4  space-y-2"
         ref={chatRef}
       >
         {data.map((message) => {
