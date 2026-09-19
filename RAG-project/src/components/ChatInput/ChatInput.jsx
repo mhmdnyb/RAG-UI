@@ -15,6 +15,7 @@ function ChatInput({ data, setData }) {
       <title>Chat</title>
       <div className="sm:w-md w-90 h-12 ring-1 ring-white/50 has-focus:ring-white/60 has-focus:ring-2 transition-all rounded-md text-gray-100 flex items-center bg-linear-to-bl from-black/30 to-black/10 backdrop-blur-2xl shadow-2xs shadow-white/30 mx-auto mb-20 duration-100">
         <input
+          dir="ltr"
           onKeyDown={(e) => {
             switch (e.key) {
               case "Enter":
@@ -28,14 +29,14 @@ function ChatInput({ data, setData }) {
           type="text"
           name="message"
           id="message"
-          className="w-full rounded-md focus:outline-0 py-2 pl-1.5"
+          className="w-full rounded-md focus:outline-0 py-2 pl-1.5 order-2"
           placeholder={"Ask"}
         />
         <svg
           onClick={() => {
             sendMessage();
           }}
-          className="mr-1.5 cursor-pointer opacity-80 active:opacity-100 active:scale-105 transition-all"
+          className="mr-1.5 cursor-pointer opacity-80 active:opacity-100 active:scale-105 transition-all order-1"
           width="30px"
           height="30px"
           viewBox="0 0 24 24"
