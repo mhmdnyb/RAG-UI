@@ -2,6 +2,7 @@ import "./ChatPage.css";
 import ChatInput from "../../components/ChatInput/ChatInput";
 import ChatMessages from "../../components/ChatMessages/ChatMessages";
 import { useEffect, useRef, useState } from "react";
+import Header from "../../components/Header/Header";
 function ChatPage() {
   const chatRef = useRef();
   const [data, setData] = useState([
@@ -13,7 +14,9 @@ function ChatPage() {
   }, [data]);
   return (
     <div className="flex flex-col justify-between gap-y-1.5 h-dvh">
+      <Header></Header>
       <section
+        dir="ltr"
         className="overflow-y-auto sm:w-lg w-96 h-full mx-auto px-1.5 mt-4  space-y-2"
         ref={chatRef}
       >

@@ -14,7 +14,7 @@ function App() {
         element={<Navigate to={"/chat"} replace={true}></Navigate>}
       ></Route>
       <Route element={<ProtectedRoute></ProtectedRoute>}>
-        <Route path={"/chat"} element={<ChatPage></ChatPage>}></Route>
+        <Route path="/chat" element={<ChatPage></ChatPage>}></Route>
       </Route>
       <Route element={<PublicRoute></PublicRoute>}>
         <Route path="/register" element={<RegisterPage></RegisterPage>}></Route>
