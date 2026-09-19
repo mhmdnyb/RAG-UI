@@ -20,7 +20,9 @@ function LoginPage() {
         const data = await response.json();
         setCookie(data.data.token);
         toast.success("خوش اومدی!");
-        console.log(data);
+        setTimeout(() => {
+          window.location.reload();
+        }, 2500);
       }
     } catch (error) {
       console.log(error);
@@ -148,7 +150,7 @@ function LoginPage() {
               login(data);
             }}
             type="submit"
-            className="bg-tenpercent text-dominant font-semibold py-2 px-8 rounded-md hover:bg-tenpercent-dark transition-colors shadow-sm block mx-auto cursor-pointer"
+            className="bg-tenpercent text-dominant font-semibold py-2 px-8 rounded-md hover:bg-tenpercent-dark transition-all shadow-sm block mx-auto cursor-pointer active:scale-105"
           >
             ورود
           </button>

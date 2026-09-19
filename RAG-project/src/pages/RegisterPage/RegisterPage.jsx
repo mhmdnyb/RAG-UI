@@ -16,9 +16,11 @@ function RegisterPage() {
       });
       if (response.ok) {
         const data = await response.json();
-        // setModal(true);
+
         toast.success("موفقیت آمیز بود");
-        console.log(data);
+        setTimeout(() => {
+          window.location = "/login";
+        }, 2500);
       }
     } catch (error) {
       console.log(error);
@@ -188,7 +190,7 @@ function RegisterPage() {
               register(data);
             }}
             type="submit"
-            className="bg-tenpercent text-dominant font-semibold py-2 px-8 rounded-md hover:bg-tenpercent-dark transition-colors shadow-sm block mx-auto cursor-pointer"
+            className="bg-tenpercent text-dominant font-semibold py-2 px-8 rounded-md hover:bg-tenpercent-dark transition-all shadow-sm block mx-auto cursor-pointer active:scale-105"
           >
             ثبت نام
           </button>
