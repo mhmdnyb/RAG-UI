@@ -11,11 +11,11 @@ function Header() {
   }
   return (
     <div
-      className="w-full h-10 bg-linear-to-br from-thirtypercent to-thirtypercent-muted rounded-b-sm backdrop-blur-2xl border border-white/30 "
+      className="w-full h-10 bg-linear-to-br from-thirtypercent to-thirtypercent-muted rounded-b-sm backdrop-blur-2xl border border-white/30 relative"
       dir="ltr"
     >
       {show && (
-        <div className="absolute h-120 w-50 bg-linear-to-tr  from-thirtypercent-muted/60 to-thirtypercent-muted/50 backdrop-blur-2xl rounded-r-sm animate-sidebar border border-tenpercent-dark/30"></div>
+        <div className="absolute z-10 -left-1 -top-1 h-dvh w-50 bg-dominant-surface backdrop-blur-2xl rounded-r-sm animate-sidebar border border-tenpercent-dark/30"></div>
       )}
       {show ? (
         <svg
