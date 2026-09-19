@@ -2,6 +2,7 @@ import "./RegisterPage.css";
 import uscLogo from "../../assets/usc.png";
 import { useRef, useState } from "react";
 import Notification from "../../components/Notification/Notification";
+import { Link } from "react-router";
 function RegisterPage() {
   const [modal, setModal] = useState(false);
   const formRef = useRef();
@@ -48,8 +49,8 @@ function RegisterPage() {
                 <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
                 <g
                   id="SVGRepo_tracerCarrier"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
                 ></g>
                 <g id="SVGRepo_iconCarrier">
                   <circle
@@ -57,7 +58,7 @@ function RegisterPage() {
                     cy="6"
                     r="4"
                     stroke="#00aab2"
-                    strokeLidth="1.5"
+                    strokelidth="1.5"
                   ></circle>
                   <path
                     d="M19.9975 18C20 17.8358 20 17.669 20 17.5C20 15.0147 16.4183 13 12 13C7.58172 13 4 15.0147 4 17.5C4 19.9853 4 22 12 22C14.231 22 15.8398 21.8433 17 21.5634"
@@ -73,7 +74,7 @@ function RegisterPage() {
               type="text"
               name="name"
               id="name"
-              placeholder="Name"
+              placeholder="نام"
               className="w-full bg-dominant/60 text-thirtypercent placeholder-thirtypercent-muted/60 rounded-md focus:outline-none py-1.5 px-2.5 text-sm"
             />
           </div>
@@ -109,8 +110,8 @@ function RegisterPage() {
                     transform="translate(4.393 6.587) rotate(-30)"
                     fill="none"
                     stroke="#00aab2"
-                    stroke-miterlimit="10"
-                    stroke-width="1.5"
+                    strokeMiterlimit="10"
+                    strokeWidth="1.5"
                   ></path>{" "}
                 </g>
               </svg>
@@ -120,7 +121,7 @@ function RegisterPage() {
               type="text"
               name="phoneNumber"
               id="phoneNumber"
-              placeholder="Phone Number"
+              placeholder="شماره تلفن"
               className="w-full bg-dominant/60 text-thirtypercent placeholder-thirtypercent-muted/60 rounded-md focus:outline-none py-1.5 px-2.5 text-sm"
             />
           </div>
@@ -134,7 +135,7 @@ function RegisterPage() {
                 xmlns="http://www.w3.org/2000/svg"
                 fill="#00aab2"
               >
-                <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
+                <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
                 <g
                   id="SVGRepo_tracerCarrier"
                   strokeLinecap="round"
@@ -167,10 +168,19 @@ function RegisterPage() {
               type="password"
               name="password"
               id="password"
-              placeholder="Password"
+              placeholder="رمز عبور"
               className="w-full bg-dominant/60 text-thirtypercent placeholder-thirtypercent-muted/60 rounded-md focus:outline-none py-1.5 px-2.5 text-sm"
             />
           </div>
+          <p className="text-thirtypercent text-center">
+            قبلا ثبت نام کردید؟{" "}
+            <Link
+              className="text-tenpercent-dark mx-1 hover:text-tenpercent transition-colors"
+              to={"/login"}
+            >
+              ورود
+            </Link>
+          </p>
 
           <button
             onClick={(e) => {
@@ -182,7 +192,7 @@ function RegisterPage() {
             type="submit"
             className="bg-tenpercent text-dominant font-semibold py-2 px-8 rounded-md hover:bg-tenpercent-dark transition-colors shadow-sm block mx-auto cursor-pointer"
           >
-            Register
+            ثبت نام
           </button>
         </form>
       </section>
