@@ -1,96 +1,60 @@
 import { useState } from "react";
 import "./Header.css";
+
 function Header() {
   const [show, setShow] = useState(false);
+
   function handleShow() {
-    if (show) {
-      setShow(false);
-    } else {
-      setShow(true);
-    }
+    setShow((prev) => !prev);
   }
+
   return (
-    <div
-      className="w-full h-10 bg-linear-to-br from-thirtypercent to-thirtypercent-muted rounded-b-sm backdrop-blur-2xl border border-white/30 relative"
+    <header
+      className="w-full h-10 bg-linear-to-br from-thirtypercent to-thirtypercent-muted rounded-b-sm backdrop-blur-2xl border border-white/30 relative z-30 flex items-center px-2"
       dir="ltr"
     >
+      <button
+        onClick={handleShow}
+        className="ml-auto relative z-50 p-1 cursor-pointer flex items-center justify-center"
+      >
+        {show ? (
+          <svg
+            width="24px"
+            height="24px"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M6 6L18 18M18 6L6 18"
+              stroke="#00aab2"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        ) : (
+          <svg
+            width="24px"
+            height="24px"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M4 7H20M4 12H20M4 17H20"
+              stroke="#00aab2"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        )}
+      </button>
+
       {show && (
-        <div className="absolute z-10 -left-1 -top-1 h-dvh w-50 bg-dominant-surface backdrop-blur-2xl rounded-r-sm animate-sidebar border border-tenpercent-dark/30"></div>
+        <aside className="fixed inset-y-0 -left-1 -top-1 z-40 h-dvh sm:w-60 w-50 bg-dominant-surface backdrop-blur-2xl rounded-r-sm animate-sidebar border-r border-tenpercent-dark/30 shadow-xl"></aside>
       )}
-      {show ? (
-        <svg
-          className="ml-auto"
-          onClick={() => {
-            handleShow();
-          }}
-          width="30px"
-          height="30px"
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <g id="SVGRepo_bgCarrier" stroke-width="0"></g>
-          <g
-            id="SVGRepo_tracerCarrier"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          ></g>
-          <g id="SVGRepo_iconCarrier">
-            {" "}
-            <path
-              d="M6 6L18 18"
-              stroke="#00aab2"
-              strokeLinecap="round"
-            ></path>{" "}
-            <path
-              d="M18 6L6.00001 18"
-              stroke="#00aab2"
-              strokeLinecap="round"
-            ></path>{" "}
-          </g>
-        </svg>
-      ) : (
-        <svg
-          className="ml-auto"
-          onClick={() => {
-            handleShow();
-          }}
-          viewBox="0 0 24 24"
-          fill="none"
-          xmlns="http://www.w3.org/2000/svg"
-          width="30px"
-          height="30px"
-        >
-          <g id="SVGRepo_bgCarrier" strokeWidth="0"></g>
-          <g
-            id="SVGRepo_tracerCarrier"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          ></g>
-          <g id="SVGRepo_iconCarrier">
-            {" "}
-            <path
-              d="M20 7L4 7"
-              stroke="#00aab2"
-              stroke-width="1.5"
-              strokeLinecap="round"
-            ></path>{" "}
-            <path
-              d="M20 12L4 12"
-              stroke="#00aab2"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            ></path>{" "}
-            <path
-              d="M20 17L4 17"
-              stroke="#00aab2"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-            ></path>{" "}
-          </g>
-        </svg>
-      )}
-    </div>
+    </header>
   );
 }
+
 export default Header;

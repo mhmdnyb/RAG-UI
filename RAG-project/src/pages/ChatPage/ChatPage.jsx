@@ -13,7 +13,7 @@ function ChatPage() {
     chatRef.current.scrollBy({ top: window.innerHeight, behavior: "smooth" });
   }, [data]);
   return (
-    <div className="flex flex-col justify-between gap-y-1.5 h-dvh overflow-hidden relative">
+    <div className="flex flex-col justify-between gap-y-1.5 h-dvh overflow-hidden relative z-10">
       <title>Chat</title>
       <Header></Header>
       <section
