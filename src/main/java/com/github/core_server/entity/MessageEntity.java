@@ -2,10 +2,13 @@ package com.github.core_server.entity;
 
 
 import com.aventrix.jnanoid.jnanoid.NanoIdUtils;
+import com.github.core_server.dto.RagSourceDto;
+import com.github.core_server.enums.MessageStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.Instant;
+import java.util.List;
 
 @Entity
 @Table(name = "message")
@@ -34,6 +37,14 @@ public class MessageEntity {
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
 
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private MessageStatus status = MessageStatus.NONE;
+
+    private boolean botMessage = false;
+
+    @Column(columnDefinition = "TEXT")
+    private String sources = null;
 
     @PrePersist
     public void onCreate(){

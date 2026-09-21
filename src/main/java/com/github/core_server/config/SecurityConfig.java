@@ -1,6 +1,7 @@
 package com.github.core_server.config;
 
 import com.github.core_server.security.JwtAuthenticationFilter;
+import com.github.core_server.security.RagServiceAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +28,7 @@ import java.util.List;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final RagServiceAuthFilter ragServiceAuthFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) {
@@ -34,20 +36,37 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
+
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/register", "/login", "/ws", "/swagger-ui/**",
-                                "/swagger-ui.html", "/v3/api-docs/**"
+                                "/register",
+                                "/login",
+                                "/ws",
+                                "/swagger-ui/**",
+                                "/swagger-ui.html",
+                                "/v3/api-docs/**",
+                                "/rag/callback"
                         ).permitAll()
+
                         .anyRequest().authenticated()
                 )
+
                 .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
                 )
+
+                .addFilterBefore(
+                        ragServiceAuthFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
+
                 .addFilterBefore(
                         jwtAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 )
+
                 .build();
     }
 

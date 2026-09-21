@@ -27,6 +27,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                                     FilterChain filterChain)
             throws ServletException, IOException {
 
+        if (request.getRequestURI().equals("/rag/callback")) {
+            System.out.println("skip jwt");
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         final String authHeader = request.getHeader("Authorization");
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
@@ -35,6 +41,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String jwt = authHeader.substring(7);
+
+//        testtttttttttttttttttttttttt
+        System.out.println(
+                "JWT FILTER -> " + request.getRequestURI()
+        );
+
+        System.out.println(
+                "AUTH HEADER -> " +
+                        request.getHeader("Authorization")
+        );
 
         String username = jwtService.extractUsername(jwt);
 

@@ -12,4 +12,7 @@ public class MessageResponse {
     private String sendTime;
     private String messageId;
     private String conversationId;
+    private String sources;
+    private String status;
+    private boolean botMessage;
 }
