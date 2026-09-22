@@ -41,10 +41,11 @@ public class MessageEntity {
     @Builder.Default
     private MessageStatus status = MessageStatus.NONE;
 
+
     private boolean botMessage = false;
 
     @Column(columnDefinition = "TEXT")
-    private String sources = null;
+    private String sources;
 
     @PrePersist
     public void onCreate(){
