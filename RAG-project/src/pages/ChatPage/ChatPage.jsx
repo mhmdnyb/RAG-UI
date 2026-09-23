@@ -21,12 +21,12 @@ function ChatPage() {
         className="overflow-y-auto sm:w-lg min-w-85 h-full mx-auto px-1.5 mt-4  space-y-2"
         ref={chatRef}
       >
-        {data.map((message) => {
+        {data.map((message, index) => {
           return (
             <ChatMessages
               text={message.text}
               sender={message.sender}
-              key={message.id}
+              key={index}
             ></ChatMessages>
           );
         })}
