@@ -1,4 +1,4 @@
-import { Suspense, useState } from "react";
+import { useState } from "react";
 import "./Header.css";
 import Sidebar from "../Sidebar/Sidebar";
 function Header() {

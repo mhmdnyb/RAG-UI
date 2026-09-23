@@ -24,9 +24,12 @@ function ChatLists() {
       {" "}
       {temp?.data.map((list, index) => {
         return (
-          <h1 key={index} className="text-gray-100">
-            {list.name}{" "}
-          </h1>
+          <div
+            key={index}
+            className="text-gray-100 bg-linear-to-bl from-white/60 to-white/50 border-white/40 backdrop-blur-2xl shadow-xs shadow-black/30 rounded-lg flex items-center justify-center w-full"
+          >
+            <p className="text-center">{list.name}</p>
+          </div>
         );
       })}
     </>
