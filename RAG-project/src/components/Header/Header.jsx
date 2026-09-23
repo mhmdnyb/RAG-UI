@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import "./Header.css";
-
+import Sidebar from "../Sidebar/Sidebar";
 function Header() {
   const [show, setShow] = useState(false);
 
@@ -50,9 +50,7 @@ function Header() {
         )}
       </button>
 
-      {show && (
-        <aside className="fixed inset-y-0 -left-1 -top-1 z-40 h-dvh sm:w-60 w-50 bg-dominant-surface backdrop-blur-2xl rounded-r-sm animate-sidebar border-r border-tenpercent-dark/30 shadow-xl"></aside>
-      )}
+      {show && <Sidebar></Sidebar>}
     </header>
   );
 }
