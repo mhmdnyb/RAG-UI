@@ -4,6 +4,7 @@ import com.github.core_server.payload.request.RagQueryRequest;
 import com.github.core_server.payload.response.RagQueryResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
@@ -21,17 +22,30 @@ public class RagClient {
         this.ragServiceToken = ragServiceToken;
     }
 
-    public RagQueryResponse sendQuestion(
-            RagQueryRequest request
-    ) {
+    public RagQueryResponse sendQuestion(RagQueryRequest request) {
+
+        String json = """
+            {
+                "conversationId": "%s",
+                "question": "%s"
+            }
+            """.formatted(
+                request.getConversationId(),
+                request.getQuestion()
+        );
+
+        System.out.println("JSON SENT TO RAG:");
+        System.out.println(json);
 
         return restClient.post()
-                .uri("rag/query")
+                .uri("/rag/query")
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON)
                 .header(
                         HttpHeaders.AUTHORIZATION,
                         "Bearer " + ragServiceToken
                 )
-                .body(request)
+                .body(json)
                 .retrieve()
                 .body(RagQueryResponse.class);
     }
