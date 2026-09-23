@@ -34,7 +34,7 @@ class QueryOrchestrator:
         retrievers: list[BaseRetriever] | dict[str, BaseRetriever],
         reranker: BaseReranker,
         llm: BaseLLMService,
-        history: BaseChatHistory,
+        history: BaseChatHistory | None = None,
         router: BaseQueryRouter | None = None,
         logger: Logger | None = None,
     ):
@@ -43,7 +43,7 @@ class QueryOrchestrator:
         self.llm = llm
         self.history = history
         self.router = router
-        self.logger = logger or get_logger("rag.orchestrator")
+        self.logger = logger or get_logger(__name__)
 
     async def process_query(
         self, conversation_id: str, question: str
@@ -56,15 +56,12 @@ class QueryOrchestrator:
             {"document": str, "page": int} dicts.
         """
         self.logger.info(
-            f"Processing query for conversation={conversation_id}: "
+            f"Processing query for job/conversation={conversation_id}: "
             f"{question[:80]}..."
         )
 
         try:
-            # 1. Retrieve chat history
-            chat_history = await self.history.get_history(conversation_id)
-
-            # 2. Determine target retrievers (via Router if provided)
+            # 1. Determine target retrievers (via Router if provided)
             target_retrievers: list[BaseRetriever] = []
             if self.router is not None and isinstance(self.retrievers, dict):
                 try:
@@ -89,7 +86,7 @@ class QueryOrchestrator:
             else:
                 target_retrievers = list(self.retrievers)
 
-            # 3. Retrieve from target retrievers
+            # 2. Retrieve from target retrievers
             all_results: list[RetrievalResult] = []
             for retriever in target_retrievers:
                 try:
@@ -105,19 +102,16 @@ class QueryOrchestrator:
                         f"continuing with other retrievers"
                     )
 
-            # 4. Rerank combined results
+            # 3. Rerank combined results
             if all_results:
                 ranked = await self.reranker.rerank(question, all_results)
             else:
                 ranked = []
 
-            # 4. Generate answer via LLM
-            answer = await self.llm.generate(question, ranked, chat_history)
+            # 4. Generate answer via LLM (Stateless — no chat history)
+            answer = await self.llm.generate(question, ranked)
 
-            # 5. Save the turn to history
-            await self.history.save_turn(conversation_id, question, answer)
-
-            # 6. Format sources for the API response
+            # 5. Format sources for the API response
             sources = [
                 {"document": r.source, "page": r.page or 0}
                 for r in ranked

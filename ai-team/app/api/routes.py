@@ -15,7 +15,7 @@ from orchestrator.pipeline import QueryOrchestrator
 from api.schemas import QueryRequest, QueryAckResponse, HealthResponse
 from api.callback import send_callback
 
-logger = get_logger("rag.api.routes")
+logger = get_logger(__name__)
 
 
 def create_router(orchestrator: QueryOrchestrator) -> APIRouter:

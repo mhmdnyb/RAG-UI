@@ -22,7 +22,7 @@ class TextRetriever(BaseRetriever):
     """
 
     def __init__(self, logger: Logger | None = None):
-        self._logger = logger or get_logger("rag.text_retriever")
+        self._logger = logger or get_logger(__name__)
 
     async def retrieve(
         self, query: str, top_k: int = 5

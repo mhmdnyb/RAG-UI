@@ -22,7 +22,7 @@ class LLMService(BaseLLMService):
     """
 
     def __init__(self, logger: Logger | None = None):
-        self._logger = logger or get_logger("rag.llm")
+        self._logger = logger or get_logger(__name__)
 
     async def generate(
         self,

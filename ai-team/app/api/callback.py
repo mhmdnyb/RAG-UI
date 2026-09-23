@@ -28,21 +28,30 @@ async def send_callback(
     Per the integration spec, this MUST be called even on errors
     (with a user-friendly error message in `answer`).
     """
-    _logger = logger or get_logger("rag.api.callback")
+    _logger = logger or get_logger(__name__)
 
     callback_url = f"{settings.core_service_url}/rag/callback"
+    parsed_sources = []
+    if sources:
+        for s in sources:
+            if isinstance(s, SourceItem):
+                parsed_sources.append(s)
+            elif isinstance(s, dict):
+                parsed_sources.append(SourceItem(**s))
+
     payload = CallbackPayload(
         conversationId=conversation_id,
         answer=answer,
-        sources=[SourceItem(**s) for s in sources] if sources else [],
+        sources=parsed_sources,
     )
 
     headers = {
-        "Authorization": f"Bearer {settings.rag_callback_token}",
         "Content-Type": "application/json",
     }
+    if settings.rag_callback_token:
+        headers["Authorization"] = f"Bearer {settings.rag_callback_token}"
 
-    _logger.info(f"Sending callback for conversation={conversation_id}")
+    _logger.info(f"Sending callback for job/conversation={conversation_id}")
 
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:

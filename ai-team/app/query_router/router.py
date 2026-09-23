@@ -25,7 +25,7 @@ class QueryRouter(BaseQueryRouter):
     """
 
     def __init__(self, logger: Logger | None = None):
-        self._logger = logger or get_logger("rag.query_router")
+        self._logger = logger or get_logger(__name__)
 
     async def route(self, query: str) -> RouteResult:
         """

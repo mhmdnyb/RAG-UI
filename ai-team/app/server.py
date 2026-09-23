@@ -23,7 +23,6 @@ from retrieval.reranker.reranker import Reranker
 from query_router.router import QueryRouter
 from llm.service import LLMService
 from embedding.service import EmbeddingService
-from history.service import ChatHistoryService
 from orchestrator.pipeline import QueryOrchestrator
 from api.routes import create_router
 from api.middleware import AuthMiddleware
@@ -37,7 +36,7 @@ def create_app() -> FastAPI:
     All other files depend only on the abstract interfaces.
     """
     setup_logging()
-    logger = get_logger("rag.server")
+    logger = get_logger(__name__)
     logger.info("Creating RAG application...")
 
     # Initialize shared infrastructure
@@ -52,7 +51,6 @@ def create_app() -> FastAPI:
         router=QueryRouter(),
         reranker=Reranker(),
         llm=LLMService(),
-        history=ChatHistoryService(),
     )
 
     # Create FastAPI app

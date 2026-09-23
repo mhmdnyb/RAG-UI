@@ -3,7 +3,7 @@ Structured logging setup for the RAG service.
 
 Usage in any module:
     from common.logger import get_logger
-    logger = get_logger("rag.sql_retriever")
+    logger = get_logger(__name__)
     logger.info("Query received", extra={"query": query})
 """
 
@@ -41,9 +41,8 @@ def get_logger(name: str = "rag") -> logging.Logger:
     Get a child logger under the 'rag' namespace.
 
     Examples:
-        get_logger("rag.sql_retriever")
-        get_logger("rag.reranker")
-        get_logger("rag.api")
+        get_logger(__name__)
+        get_logger("api.routes")
     """
     if not name.startswith("rag"):
         name = f"rag.{name}"

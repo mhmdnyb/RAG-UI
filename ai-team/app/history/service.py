@@ -21,7 +21,7 @@ class ChatHistoryService(BaseChatHistory):
     """
 
     def __init__(self, logger: Logger | None = None):
-        self._logger = logger or get_logger("rag.history")
+        self._logger = logger or get_logger(__name__)
         self._store: dict[str, list[dict]] = {}
 
     async def get_history(self, conversation_id: str) -> list[dict]:

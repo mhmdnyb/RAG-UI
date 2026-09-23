@@ -27,7 +27,7 @@ class SQLRetriever(BaseRetriever):
 
     def __init__(self, engine: Engine | None = None, logger: Logger | None = None):
         self._engine = engine
-        self._logger = logger or get_logger("rag.sql_retriever")
+        self._logger = logger or get_logger(__name__)
         self._query_engine = None
 
     def _get_query_engine(self):

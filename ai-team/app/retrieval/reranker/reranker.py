@@ -22,7 +22,7 @@ class Reranker(BaseReranker):
     """
 
     def __init__(self, logger: Logger | None = None):
-        self._logger = logger or get_logger("rag.reranker")
+        self._logger = logger or get_logger(__name__)
 
     async def rerank(
         self,

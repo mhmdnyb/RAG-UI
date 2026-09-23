@@ -11,7 +11,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from common.config import settings
 from common.logger import get_logger
 
-logger = get_logger("rag.api.middleware")
+logger = get_logger(__name__)
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
