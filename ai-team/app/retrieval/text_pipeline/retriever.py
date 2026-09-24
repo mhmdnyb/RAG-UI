@@ -1,39 +1,28 @@
-"""
-Text/Vector Retriever — stub implementation for document-based retrieval.
-
-Owner: Dev 2
-
-TODO: Implement actual vector search using embeddings + pgvector or similar.
-"""
+"""Vector search over the university documents."""
 
 from logging import Logger
 
-from common.interfaces import BaseRetriever, RetrievalResult
-from common.exceptions import RetrievalError
-from common.logger import get_logger
+from app.common.interfaces import (
+    BaseEmbeddingService,
+    BaseRetriever,
+    RetrievalResult,
+)
+from app.common.logger import get_logger
 
 
 class TextRetriever(BaseRetriever):
-    """
-    Retrieves relevant text chunks from document embeddings
-    using vector similarity search.
+    """Stub: returns nothing."""
 
-    This is a STUB — replace with actual implementation.
-    """
-
-    def __init__(self, logger: Logger | None = None):
+    def __init__(
+        self,
+        embedder: BaseEmbeddingService | None = None,
+        logger: Logger | None = None,
+    ):
+        self._embedder = embedder
         self._logger = logger or get_logger(__name__)
 
-    async def retrieve(
-        self, query: str, top_k: int = 5
-    ) -> list[RetrievalResult]:
-        """
-        TODO: Implement vector similarity search.
-
-        Expected flow:
-        1. Embed the query using BaseEmbeddingService
-        2. Search the vector store for similar chunks
-        3. Return top_k results as RetrievalResult objects
-        """
-        self._logger.warning("TextRetriever is a stub — returning empty results")
+    async def retrieve(self, query: str, top_k: int = 5) -> list[RetrievalResult]:
+        # TODO(#4): embed the query with self._embedder.embed_query(),
+        # then search pgvector.
+        self._logger.warning("TextRetriever is a stub — returning no results")
         return []

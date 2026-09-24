@@ -1,70 +1,97 @@
 """
-Callback client — sends the generated answer back to Core Service.
+Delivers the answer back to Core Service.
 
-Implements the POST /rag/callback contract from CORE_SERVICE_INTEGRATION.md.
+    POST {CORE_SERVICE_URL}/rag/callback
+    {"conversationId": str, "answer": str,
+     "sources": [{"document": str, "page": int|null}]}
 
-Owner: Dev 7
+Every accepted question must produce a callback, success or failure —
+otherwise the student's message stays PROCESSING forever. Delivery is
+at-least-once, not exactly-once.
 """
 
-import httpx
+import asyncio
 from logging import Logger
 
-from common.config import settings
-from common.exceptions import CallbackError
-from common.logger import get_logger
-from api.schemas import CallbackPayload, SourceItem
+import httpx
+
+from app.api.schemas import CallbackPayload, SourceItem
+from app.common.config import settings
+from app.common.exceptions import CallbackError
+from app.common.logger import get_logger
+
+
+def _build_payload(
+    conversation_id: str, answer: str, sources: list[dict] | None
+) -> CallbackPayload:
+    items: list[SourceItem] = []
+    for s in sources or []:
+        items.append(s if isinstance(s, SourceItem) else SourceItem(**s))
+    return CallbackPayload(conversationId=conversation_id, answer=answer, sources=items)
 
 
 async def send_callback(
     conversation_id: str,
     answer: str,
-    sources: list[dict],
+    sources: list[dict] | None = None,
+    client: httpx.AsyncClient | None = None,
     logger: Logger | None = None,
 ) -> None:
-    """
-    Send the generated answer to Core Service's /rag/callback endpoint.
-
-    This is called after the orchestrator finishes processing.
-    Per the integration spec, this MUST be called even on errors
-    (with a user-friendly error message in `answer`).
-    """
+    """Retries with exponential backoff. Raises CallbackError if it never lands."""
     _logger = logger or get_logger(__name__)
 
-    callback_url = f"{settings.core_service_url}/rag/callback"
-    parsed_sources = []
-    if sources:
-        for s in sources:
-            if isinstance(s, SourceItem):
-                parsed_sources.append(s)
-            elif isinstance(s, dict):
-                parsed_sources.append(SourceItem(**s))
+    url = f"{settings.core_service_url.rstrip('/')}/rag/callback"
+    payload = _build_payload(conversation_id, answer, sources)
 
-    payload = CallbackPayload(
-        conversationId=conversation_id,
-        answer=answer,
-        sources=parsed_sources,
-    )
-
-    headers = {
-        "Content-Type": "application/json",
-    }
+    headers = {"Content-Type": "application/json"}
     if settings.rag_callback_token:
         headers["Authorization"] = f"Bearer {settings.rag_callback_token}"
 
-    _logger.info(f"Sending callback for job/conversation={conversation_id}")
+    attempts = max(1, settings.callback_max_attempts)
+    last_error: Exception | None = None
 
-    try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                callback_url,
-                json=payload.model_dump(),
-                headers=headers,
-            )
+    for attempt in range(1, attempts + 1):
+        try:
+            if client is not None:
+                response = await client.post(
+                    url, json=payload.model_dump(), headers=headers
+                )
+            else:
+                async with httpx.AsyncClient(
+                    timeout=settings.callback_timeout_seconds
+                ) as owned:
+                    response = await owned.post(
+                        url, json=payload.model_dump(), headers=headers
+                    )
             response.raise_for_status()
             _logger.info(
-                f"Callback sent successfully for conversation={conversation_id}, "
-                f"status={response.status_code}"
+                f"Callback delivered for conversation={conversation_id} "
+                f"(attempt {attempt}, status={response.status_code})"
             )
-    except httpx.HTTPError as e:
-        _logger.error(f"Callback failed for conversation={conversation_id}: {e}")
-        raise CallbackError(f"Failed to send callback: {e}") from e
+            return
+        except httpx.HTTPStatusError as e:
+            last_error = e
+            # 4xx: Core cannot accept this body, resending it won't help.
+            if 400 <= e.response.status_code < 500:
+                _logger.error(
+                    f"Callback rejected with {e.response.status_code} for "
+                    f"conversation={conversation_id}; not retrying"
+                )
+                break
+            _logger.warning(
+                f"Callback attempt {attempt}/{attempts} failed "
+                f"({e.response.status_code}) for conversation={conversation_id}"
+            )
+        except httpx.HTTPError as e:
+            last_error = e
+            _logger.warning(
+                f"Callback attempt {attempt}/{attempts} failed "
+                f"({e}) for conversation={conversation_id}"
+            )
+
+        if attempt < attempts:
+            await asyncio.sleep(2 ** (attempt - 1))
+
+    raise CallbackError(
+        f"Failed to deliver callback for conversation={conversation_id}: {last_error}"
+    )

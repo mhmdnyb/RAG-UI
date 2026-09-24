@@ -1,42 +1,53 @@
 """
-Pydantic models for API request/response validation.
+Wire contract with Core Service.
 
-Matches the contract defined in CORE_SERVICE_INTEGRATION.md.
+Renaming or adding a field here breaks the Java side — Jackson rejects
+unknown properties by default. Coordinate before touching it.
 """
 
-from pydantic import BaseModel
+from typing import Annotated
 
+from pydantic import BaseModel, Field, StringConstraints
 
-# ── Incoming from Core Service ─────────────────────────────────
+from app.common.config import settings
+
+# Stripped before the length check, so a whitespace-only question is a 422.
+Question = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=settings.max_question_length,
+    ),
+]
+
 
 class QueryRequest(BaseModel):
-    """Request body for POST /rag/query (sent by Core Service)."""
-    conversationId: str
-    question: str
+    conversationId: str = Field(min_length=1, max_length=64)
+    question: Question
 
 
 class QueryAckResponse(BaseModel):
-    """Immediate ACK response to Core Service."""
     status: str = "OK"
 
 
-# ── Outgoing to Core Service (callback) ───────────────────────
-
 class SourceItem(BaseModel):
-    """A single source reference in the callback payload."""
     document: str
-    page: int
+    page: int | None = None
 
 
 class CallbackPayload(BaseModel):
-    """Request body for POST /rag/callback (sent TO Core Service)."""
     conversationId: str
     answer: str
     sources: list[SourceItem]
 
 
-# ── Health check ──────────────────────────────────────────────
-
 class HealthResponse(BaseModel):
     status: str = "healthy"
     service: str = "rag"
+
+
+class ReadyResponse(BaseModel):
+    status: str
+    database: str
+    queue: str

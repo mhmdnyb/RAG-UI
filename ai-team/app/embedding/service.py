@@ -1,37 +1,98 @@
-"""
-Embedding Service — generates vector embeddings from text.
+"""Local embedding model, wrapped as a LlamaIndex adapter."""
 
-Owner: Dev 5
+from __future__ import annotations
 
-TODO: Implement actual embedding API calls (OpenAI, Sentence-Transformers, etc.).
-"""
-
+import asyncio
 from logging import Logger
+from typing import TYPE_CHECKING, Any
 
-from common.interfaces import BaseEmbeddingService
-from common.exceptions import EmbeddingError
-from common.logger import get_logger
+from app.common.config import settings
+from app.common.exceptions import EmbeddingError
+from app.common.interfaces import BaseEmbeddingService
+from app.common.logger import get_logger
+
+if TYPE_CHECKING:  # keeps llama-index out of import time
+    from llama_index.core.base.embeddings.base import BaseEmbedding
 
 
 class EmbeddingService(BaseEmbeddingService):
     """
-    Converts text into vector embeddings for similarity search.
+    Adapter over a LlamaIndex embedding model.
 
-    This is a STUB — replace with actual implementation.
+    Pass `model` in tests; leave it empty in production and the model is
+    loaded lazily, once per process. LlamaIndex code gets the model
+    explicitly — `VectorStoreIndex(..., embed_model=await svc.get_model())`
+    — never through the global `llama_index.core.Settings`.
     """
 
-    def __init__(self, logger: Logger | None = None):
+    def __init__(
+        self,
+        model: BaseEmbedding | None = None,
+        logger: Logger | None = None,
+    ):
         self._logger = logger or get_logger(__name__)
+        self._model = model
+        self._lock = asyncio.Lock()
+        self._semaphore = asyncio.Semaphore(settings.embedding_max_concurrency)
+
+    def _build_model(self) -> BaseEmbedding:
+        # TODO(#5): confirm the model choice and its options
+        from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+        self._logger.info(
+            f"Loading embedding model '{settings.embedding_model}' "
+            f"on {settings.embedding_device}"
+        )
+        return HuggingFaceEmbedding(
+            model_name=settings.embedding_model,
+            device=settings.embedding_device,
+            embed_batch_size=settings.embedding_batch_size,
+        )
+
+    async def get_model(self) -> BaseEmbedding:
+        if self._model is None:
+            async with self._lock:
+                if self._model is None:
+                    self._model = await asyncio.to_thread(self._build_model)
+        return self._model
+
+    async def warm_up(self) -> None:
+        """
+        Pay the cold-start cost at boot. Raises: a worker whose model does
+        not load must fail to start, not report itself ready.
+        """
+        await self.embed_query("warmup")
+        self._logger.info("Embedding model warmed up")
 
     async def embed(self, texts: list[str]) -> list[list[float]]:
-        """
-        TODO: Implement embedding generation.
+        if not texts:
+            return []
+        model = await self.get_model()
+        try:
+            async with self._semaphore:
+                return await asyncio.to_thread(self._embed_documents_sync, model, texts)
+        except Exception as e:
+            self._logger.error(f"Embedding failed: {e}", exc_info=True)
+            raise EmbeddingError(f"Embedding failed: {e}") from e
 
-        Expected flow:
-        1. Send texts to the embedding model API
-        2. Return a list of embedding vectors
+    async def embed_query(self, text: str) -> list[float]:
+        model = await self.get_model()
+        try:
+            async with self._semaphore:
+                return await asyncio.to_thread(self._embed_query_sync, model, text)
+        except Exception as e:
+            self._logger.error(f"Query embedding failed: {e}", exc_info=True)
+            raise EmbeddingError(f"Query embedding failed: {e}") from e
 
-        Current behavior: returns empty vectors.
-        """
-        self._logger.warning("EmbeddingService is a stub — returning empty vectors")
-        return [[0.0] for _ in texts]
+    # Inference runs in a thread: torch releases the GIL in its native
+    # kernels, so this gives real parallelism and keeps the loop free.
+
+    @staticmethod
+    def _embed_documents_sync(model: Any, texts: list[str]) -> list[list[float]]:
+        # TODO(#5): add the document prefix if the model needs one
+        return model.get_text_embedding_batch(texts, show_progress=False)
+
+    @staticmethod
+    def _embed_query_sync(model: Any, text: str) -> list[float]:
+        # TODO(#5): add the query prefix if the model needs one
+        return model.get_query_embedding(text)

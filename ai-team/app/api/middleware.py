@@ -1,53 +1,33 @@
 """
-FastAPI middleware for authentication and error handling.
+Attaches a request id to every request.
 
-Owner: Dev 7
+Raw ASGI rather than BaseHTTPMiddleware: contextvars survive, and we skip
+its overhead and streaming edge cases.
 """
 
-from fastapi import Request, HTTPException
-from fastapi.responses import JSONResponse
-from starlette.middleware.base import BaseHTTPMiddleware
-
-from common.config import settings
-from common.logger import get_logger
-
-logger = get_logger(__name__)
+from app.common.context import new_request_id, set_request_id
 
 
-class AuthMiddleware(BaseHTTPMiddleware):
-    """
-    Validates the Authorization Bearer token on incoming requests
-    to protected endpoints (POST /rag/query).
+class RequestIdMiddleware:
+    HEADER = b"x-request-id"
 
-    Skips authentication for health check and docs endpoints.
-    """
+    def __init__(self, app):
+        self.app = app
 
-    SKIP_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
-    async def dispatch(self, request: Request, call_next):
-        # Skip auth for non-protected paths
-        if request.url.path in self.SKIP_PATHS:
-            return await call_next(request)
+        incoming = dict(scope.get("headers") or {}).get(self.HEADER)
+        request_id = incoming.decode() if incoming else new_request_id()
+        set_request_id(request_id)
+        scope.setdefault("state", {})["request_id"] = request_id
 
-        # Skip auth if no token is configured (development mode)
-        if not settings.rag_service_token:
-            return await call_next(request)
+        async def send_with_header(message):
+            if message["type"] == "http.response.start":
+                headers = message.setdefault("headers", [])
+                headers.append((self.HEADER, request_id.encode()))
+            await send(message)
 
-        # Validate Bearer token
-        auth_header = request.headers.get("Authorization", "")
-        if not auth_header.startswith("Bearer "):
-            logger.warning(f"Missing Bearer token for {request.url.path}")
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Missing Authorization header"},
-            )
-
-        token = auth_header.removeprefix("Bearer ").strip()
-        if token != settings.rag_service_token:
-            logger.warning(f"Invalid token for {request.url.path}")
-            return JSONResponse(
-                status_code=401,
-                content={"detail": "Invalid token"},
-            )
-
-        return await call_next(request)
+        await self.app(scope, receive, send_with_header)

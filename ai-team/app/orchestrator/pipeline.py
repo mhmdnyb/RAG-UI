@@ -1,34 +1,55 @@
 """
-Query Orchestrator — the central pipeline that coordinates all modules.
+The RAG pipeline: route, retrieve, rerank, generate.
 
-This module uses Dependency Injection: it receives all module instances
-via the constructor and does NOT import any concrete implementations.
-
-Changes to this file should be reviewed by the team lead.
+Dependencies are injected; nothing concrete is imported here.
+Changes should be reviewed by the team lead.
 """
 
+import asyncio
+from dataclasses import dataclass, field
 from logging import Logger
 
-from common.interfaces import (
-    BaseRetriever,
-    BaseReranker,
-    BaseLLMService,
+from app.common.config import settings
+from app.common.constants import NO_RESULTS_FOUND
+from app.common.exceptions import RetrievalError
+from app.common.interfaces import (
     BaseChatHistory,
+    BaseLLMService,
     BaseQueryRouter,
+    BaseReranker,
+    BaseRetriever,
     RetrievalResult,
 )
-from common.exceptions import RAGBaseError
-from common.logger import get_logger
+from app.common.logger import get_logger
+
+# Standard constant for Reciprocal Rank Fusion.
+_RRF_K = 60
+
+
+@dataclass
+class _Outcome:
+    retriever: str
+    ok: bool
+    results: list[RetrievalResult] = field(default_factory=list)
+
+
+def _fuse(batches: list[list[RetrievalResult]]) -> list[RetrievalResult]:
+    """
+    Reciprocal Rank Fusion. Scores from different retrievers are not on
+    the same scale, so only each result's rank inside its own batch counts.
+    """
+    fused: dict[tuple, tuple[float, RetrievalResult]] = {}
+    for batch in batches:
+        ordered = sorted(batch, key=lambda r: r.score, reverse=True)
+        for rank, result in enumerate(ordered, start=1):
+            key = (result.source, result.page, result.content)
+            prev_score, _ = fused.get(key, (0.0, result))
+            fused[key] = (prev_score + 1.0 / (_RRF_K + rank), result)
+    ranked = sorted(fused.values(), key=lambda item: item[0], reverse=True)
+    return [result for _, result in ranked]
 
 
 class QueryOrchestrator:
-    """
-    Orchestrates the full RAG pipeline:
-    route → retrieve → rerank → generate → save history.
-
-    All dependencies are injected via the constructor.
-    """
-
     def __init__(
         self,
         retrievers: list[BaseRetriever] | dict[str, BaseRetriever],
@@ -38,6 +59,8 @@ class QueryOrchestrator:
         router: BaseQueryRouter | None = None,
         logger: Logger | None = None,
     ):
+        # `history` is unused for now; the slot exists so chat history can
+        # be added later without changing this signature.
         self.retrievers = retrievers
         self.reranker = reranker
         self.llm = llm
@@ -45,88 +68,85 @@ class QueryOrchestrator:
         self.router = router
         self.logger = logger or get_logger(__name__)
 
+    async def _select_retrievers(self, question: str) -> list[BaseRetriever]:
+        if not isinstance(self.retrievers, dict):
+            return list(self.retrievers)
+
+        if self.router is None:
+            return list(self.retrievers.values())
+
+        try:
+            result = await self.router.route(question)
+            route = getattr(result, "route", str(result)).lower()
+            self.logger.info(f"Router selected route: '{route}'")
+            if route in self.retrievers:
+                return [self.retrievers[route]]
+        except Exception as e:
+            self.logger.warning(
+                f"Routing failed ({e}), falling back to all retrievers",
+                exc_info=True,
+            )
+        return list(self.retrievers.values())
+
+    async def _run_one(self, retriever: BaseRetriever, question: str) -> _Outcome:
+        name = retriever.__class__.__name__
+        try:
+            results = await asyncio.wait_for(
+                retriever.retrieve(question, top_k=settings.retrieval_top_k),
+                timeout=settings.retriever_timeout_seconds,
+            )
+            self.logger.info(f"{name} returned {len(results)} results")
+            return _Outcome(name, ok=True, results=list(results))
+        except TimeoutError:
+            self.logger.warning(f"{name} timed out, continuing without it")
+        except Exception as e:
+            # Broad on purpose: one broken retriever must not sink the query.
+            self.logger.warning(f"{name} failed: {e}", exc_info=True)
+        return _Outcome(name, ok=False)
+
     async def process_query(
         self, conversation_id: str, question: str
     ) -> tuple[str, list[dict]]:
         """
-        Run the full RAG pipeline for a user question.
+        Returns (answer, sources).
 
-        Returns:
-            (answer, sources) where sources is a list of
-            {"document": str, "page": int} dicts.
+        Errors propagate: the caller decides what the user is told.
         """
-        self.logger.info(
-            f"Processing query for job/conversation={conversation_id}: "
-            f"{question[:80]}..."
-        )
+        self.logger.info(f"Processing query for conversation={conversation_id}")
 
-        try:
-            # 1. Determine target retrievers (via Router if provided)
-            target_retrievers: list[BaseRetriever] = []
-            if self.router is not None and isinstance(self.retrievers, dict):
-                try:
-                    route_result = await self.router.route(question)
-                    target_route = (
-                        route_result.route.lower()
-                        if hasattr(route_result, "route")
-                        else str(route_result).lower()
-                    )
-                    self.logger.info(f"Router selected route: '{target_route}'")
-                    if target_route in self.retrievers:
-                        target_retrievers = [self.retrievers[target_route]]
-                    else:
-                        target_retrievers = list(self.retrievers.values())
-                except Exception as e:
-                    self.logger.warning(
-                        f"Routing failed ({e}), falling back to all retrievers"
-                    )
-                    target_retrievers = list(self.retrievers.values())
-            elif isinstance(self.retrievers, dict):
-                target_retrievers = list(self.retrievers.values())
-            else:
-                target_retrievers = list(self.retrievers)
+        targets = await self._select_retrievers(question)
 
-            # 2. Retrieve from target retrievers
-            all_results: list[RetrievalResult] = []
-            for retriever in target_retrievers:
-                try:
-                    results = await retriever.retrieve(question)
-                    all_results.extend(results)
-                    self.logger.info(
-                        f"{retriever.__class__.__name__} returned "
-                        f"{len(results)} results"
-                    )
-                except RAGBaseError as e:
-                    self.logger.warning(
-                        f"{retriever.__class__.__name__} failed: {e}, "
-                        f"continuing with other retrievers"
-                    )
+        outcomes = await asyncio.gather(*(self._run_one(r, question) for r in targets))
+        all_results = _fuse([o.results for o in outcomes if o.ok])
 
-            # 3. Rerank combined results
-            if all_results:
-                ranked = await self.reranker.rerank(question, all_results)
-            else:
-                ranked = []
-
-            # 4. Generate answer via LLM (Stateless — no chat history)
-            answer = await self.llm.generate(question, ranked)
-
-            # 5. Format sources for the API response
-            sources = [
-                {"document": r.source, "page": r.page or 0}
-                for r in ranked
-            ]
-
-            self.logger.info(
-                f"Query processed successfully for conversation={conversation_id}"
+        # "Nothing found" is only true if every search actually ran.
+        failed = [o.retriever for o in outcomes if not o.ok]
+        if failed and not all_results:
+            raise RetrievalError(
+                f"No results and retrievers failed: {', '.join(failed)}"
             )
-            return answer, sources
 
-        except Exception as e:
-            self.logger.error(f"Pipeline failed: {e}", exc_info=True)
-            # Always return a user-friendly message (never leave the user hanging)
-            error_msg = (
-                "متأسفانه در پردازش سوال شما خطایی رخ داد. "
-                "لطفاً دوباره تلاش کنید."
-            )  # "An error occurred processing your question. Please try again."
-            return error_msg, []
+        ranked: list[RetrievalResult] = []
+        if all_results:
+            try:
+                ranked = await self.reranker.rerank(
+                    question, all_results, top_k=settings.reranker_top_k
+                )
+            except Exception as e:
+                self.logger.warning(
+                    f"Reranker failed ({e}), using fused order",
+                    exc_info=True,
+                )
+                ranked = all_results[: settings.reranker_top_k]
+
+        if not ranked:
+            self.logger.info("No results retrieved for this query")
+            return NO_RESULTS_FOUND, []
+
+        answer = await self.llm.generate(question, ranked)
+        sources = [{"document": r.source, "page": r.page} for r in ranked]
+
+        self.logger.info(
+            f"Query processed successfully for conversation={conversation_id}"
+        )
+        return answer, sources

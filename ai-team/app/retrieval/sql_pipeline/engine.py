@@ -6,6 +6,7 @@ from llama_index.core import SQLDatabase
 from llama_index.core.query_engine import NLSQLTableQueryEngine
 from .schema import TABLE_SCHEMA_DESCRIPTION
 
+
 def build_sql_query_engine():
     engine = create_engine(os.environ["DATABASE_URL"])
     sql_database = SQLDatabase(engine, include_tables=["classes"])

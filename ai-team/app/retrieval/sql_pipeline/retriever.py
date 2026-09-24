@@ -13,9 +13,9 @@ from logging import Logger
 
 from sqlalchemy.engine import Engine
 
-from common.interfaces import BaseRetriever, RetrievalResult
-from common.exceptions import RetrievalError
-from common.logger import get_logger
+from app.common.interfaces import BaseRetriever, RetrievalResult
+from app.common.exceptions import RetrievalError
+from app.common.logger import get_logger
 from .engine import build_sql_query_engine
 
 
@@ -37,9 +37,7 @@ class SQLRetriever(BaseRetriever):
             self._logger.info("SQL query engine initialized")
         return self._query_engine
 
-    async def retrieve(
-        self, query: str, top_k: int = 5
-    ) -> list[RetrievalResult]:
+    async def retrieve(self, query: str, top_k: int = 5) -> list[RetrievalResult]:
         """
         Convert the user's natural-language query to SQL,
         execute it, and return results as RetrievalResult objects.
@@ -50,9 +48,7 @@ class SQLRetriever(BaseRetriever):
 
             # LlamaIndex query engine is synchronous — run in thread pool
             loop = asyncio.get_event_loop()
-            response = await loop.run_in_executor(
-                None, query_engine.query, query
-            )
+            response = await loop.run_in_executor(None, query_engine.query, query)
 
             return [
                 RetrievalResult(

@@ -1,93 +1,96 @@
 """
-FastAPI route handlers.
-
-Implements the endpoints defined in CORE_SERVICE_INTEGRATION.md:
-  - POST /rag/query   — receive question, ACK immediately, process in background
-  - GET  /health      — health check
-
-Owner: Dev 7
+POST /rag/query   accept a question, ACK, process it in the background
+GET  /health      liveness
+GET  /ready       readiness
 """
 
-from fastapi import APIRouter, BackgroundTasks
+import asyncio
 
-from common.logger import get_logger
-from orchestrator.pipeline import QueryOrchestrator
-from api.schemas import QueryRequest, QueryAckResponse, HealthResponse
-from api.callback import send_callback
+from fastapi import APIRouter, Depends, Response
+
+from app.api.deps import verify_service_token
+from app.api.jobs import dispatch_query
+from app.api.schemas import (
+    HealthResponse,
+    QueryAckResponse,
+    QueryRequest,
+    ReadyResponse,
+)
+from app.common.config import settings
+from app.common.logger import get_logger
 
 logger = get_logger(__name__)
 
 
-def create_router(orchestrator: QueryOrchestrator) -> APIRouter:
-    """
-    Factory function that creates a FastAPI router
-    with the orchestrator injected.
-    """
+def create_router() -> APIRouter:
     router = APIRouter()
 
-    @router.post("/rag/query", response_model=QueryAckResponse)
-    async def handle_query(
-        request: QueryRequest, background_tasks: BackgroundTasks
-    ):
-        """
-        Receive a question from Core Service.
-        - ACK immediately with {"status": "OK"}
-        - Process the question in a background task
-        - Send the answer via callback when ready
-        """
+    @router.post(
+        "/rag/query",
+        response_model=QueryAckResponse,
+        dependencies=[Depends(verify_service_token)],
+        summary="Accept a question and process it asynchronously",
+    )
+    async def handle_query(request: QueryRequest) -> QueryAckResponse:
+        # Length only: questions can carry students' personal data.
         logger.info(
             f"Received query: conversation={request.conversationId}, "
-            f"question={request.question[:80]}..."
+            f"length={len(request.question)}"
         )
-
-        # Schedule background processing (non-blocking)
-        background_tasks.add_task(
-            _process_and_callback,
-            orchestrator,
-            request.conversationId,
-            request.question,
-        )
-
-        # Return immediate ACK (MUST be exactly "OK")
+        await dispatch_query(request.conversationId, request.question)
+        # Core Service compares this against the literal string "OK".
         return QueryAckResponse(status="OK")
 
-    @router.get("/health", response_model=HealthResponse)
-    async def health_check():
-        """Health check endpoint for Docker/K8s."""
+    @router.get("/health", response_model=HealthResponse, summary="Liveness")
+    async def health_check() -> HealthResponse:
         return HealthResponse()
+
+    @router.get(
+        "/ready",
+        response_model=ReadyResponse,
+        summary="Readiness",
+        responses={503: {"model": ReadyResponse}},
+    )
+    async def readiness_check(response: Response) -> ReadyResponse:
+        database = await asyncio.to_thread(_check_database)
+        queue = await _check_queue()
+        ok = database == "ok" and queue in {"ok", "in-process"}
+        # Load balancers only look at the status code.
+        if not ok:
+            response.status_code = 503
+        return ReadyResponse(
+            status="ready" if ok else "not_ready",
+            database=database,
+            queue=queue,
+        )
 
     return router
 
 
-async def _process_and_callback(
-    orchestrator: QueryOrchestrator,
-    conversation_id: str,
-    question: str,
-) -> None:
-    """
-    Background task: process the query through the full RAG pipeline,
-    then send the result to Core Service via callback.
-
-    Per the integration spec, this MUST always call the callback —
-    even if the pipeline fails (with a user-friendly error message).
-    """
+def _check_database() -> str:
     try:
-        answer, sources = await orchestrator.process_query(
-            conversation_id, question
-        )
-    except Exception as e:
-        logger.error(f"Pipeline error: {e}", exc_info=True)
-        answer = (
-            "متأسفانه در پردازش سوال شما خطایی رخ داد. "
-            "لطفاً دوباره تلاش کنید."
-        )
-        sources = []
+        from sqlalchemy import text
 
-    # Always send callback to Core Service
-    try:
-        await send_callback(conversation_id, answer, sources)
+        from app.common.database import get_engine
+
+        with get_engine(settings.database_url).connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return "ok"
     except Exception as e:
-        logger.error(
-            f"Callback failed for conversation={conversation_id}: {e}",
-            exc_info=True,
-        )
+        logger.warning(f"Readiness: database unreachable ({e})")
+        return "unreachable"
+
+
+async def _check_queue() -> str:
+    if not settings.use_queue:
+        return "in-process"
+    try:
+        import redis.asyncio as redis
+
+        client = redis.from_url(settings.redis_url)
+        await client.ping()
+        await client.aclose()
+        return "ok"
+    except Exception as e:
+        logger.warning(f"Readiness: broker unreachable ({e})")
+        return "unreachable"
