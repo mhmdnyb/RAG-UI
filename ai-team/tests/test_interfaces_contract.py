@@ -6,10 +6,17 @@ integration day.
 
 import pytest
 
-from app.common.fakes import FakeEmbedding, FakeLLM, FakeReranker, FakeRetriever
-from app.common.interfaces import RetrievalResult
+from app.common.fakes import (
+    FakeEmbedding,
+    FakeLLM,
+    FakeReranker,
+    FakeRetriever,
+    FakeRouter,
+)
+from app.common.interfaces import RetrievalResult, RouteResult
 from app.embedding.service import EmbeddingService
 from app.llm.service import LLMService
+from app.query_router.router import QueryRouter
 from app.retrieval.reranker.reranker import Reranker
 from app.retrieval.text_pipeline.retriever import TextRetriever
 from tests.doubles import FakeLlamaEmbedModel
@@ -20,6 +27,7 @@ RETRIEVERS = [FakeRetriever(), TextRetriever()]
 RERANKERS = [FakeReranker(), Reranker()]
 LLMS = [FakeLLM(), LLMService()]
 EMBEDDERS = [FakeEmbedding(), EmbeddingService(model=FakeLlamaEmbedModel())]
+ROUTERS = [FakeRouter(), QueryRouter()]
 
 
 @pytest.mark.parametrize("retriever", RETRIEVERS)
@@ -54,3 +62,10 @@ async def test_embedder_returns_one_vector_per_text(embedder):
     vectors = await embedder.embed(["a", "b"])
     assert len(vectors) == 2
     assert all(isinstance(v, list) for v in vectors)
+
+
+@pytest.mark.parametrize("router", ROUTERS)
+async def test_router_returns_route_result(router):
+    result = await router.route("سوال نمونه")
+    assert isinstance(result, RouteResult)
+    assert result.route in ("sql", "text", "all")
