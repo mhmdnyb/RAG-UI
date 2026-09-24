@@ -1,0 +1,28 @@
+name: CI
+
+on:
+  pull_request:
+    paths:
+      - "ai-team/**"
+  push:
+    branches: [main, develop]
+    paths:
+      - "ai-team/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ai-team
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ai-team/requirements*.txt
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: ruff format --check app tests scripts
+      - run: ruff check app tests scripts
+      - run: pytest -q
