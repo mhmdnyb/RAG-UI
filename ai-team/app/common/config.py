@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.1
     llm_max_tokens: int = 1024
 
+    # Query Router (OpenRouter or OpenAI compatible)
+    router_model: str = "meta-llama/llama-3.1-8b-instruct"
+    router_base_url: str | None = "https://openrouter.ai/api/v1"
+    router_api_key: str = ""
+    router_temperature: float = 0.0
+
     embedding_model: str = "intfloat/multilingual-e5-base"
     embedding_device: str = "cpu"
     embedding_batch_size: int = 32
