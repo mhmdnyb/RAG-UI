@@ -62,12 +62,19 @@ class QueryRouter(BaseQueryRouter):
         if client is not None:
             self._client = client
         elif resolved_api_key:
-            from openai import AsyncOpenAI
+            try:
+                from openai import AsyncOpenAI
 
-            self._client = AsyncOpenAI(
-                api_key=resolved_api_key,
-                base_url=self._base_url or None,
-            )
+                self._client = AsyncOpenAI(
+                    api_key=resolved_api_key,
+                    base_url=self._base_url or None,
+                )
+            except ImportError:
+                self._client = None
+                self._logger.error(
+                    "QueryRouter: 'openai' package is missing. "
+                    "Install it to use LLM routing. Falling back to safe mode."
+                )
         else:
             self._client = None
             self._logger.warning(
