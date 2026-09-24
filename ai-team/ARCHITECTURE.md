@@ -60,10 +60,10 @@ All modules communicate using the `RetrievalResult` dataclass:
 ```python
 @dataclass
 class RetrievalResult:
-    content: str                        # The retrieved text
-    source: str                         # Document name or "sql_query"
-    page: int | None = None             # Page number (if applicable)
-    score: float = 0.0                  # Relevance score
+    content: str  # The retrieved text
+    source: str  # Document name or "sql_query"
+    page: int | None = None  # Page number (if applicable)
+    score: float = 0.0  # Relevance score
     metadata: dict = field(default_factory=dict)
 ```
 
@@ -89,21 +89,26 @@ orchestrator = QueryOrchestrator(
 
 ---
 
-### 4. App Factory Pattern
+### 4. Composition Root
 
-The `create_app()` function in `main.py` is the **single composition root** — the only place where concrete implementations are imported and wired together.
+`app/composition.py` is the **single composition root** — the only place
+where concrete implementations are imported and wired together. The API
+(`app/server.py`) and the worker (`app/worker/tasks.py`) both build from it,
+so they cannot drift apart.
 
 ```python
-def create_app() -> FastAPI:
-    orchestrator = QueryOrchestrator(
-        retrievers=[SQLRetriever(), TextRetriever()],
+@lru_cache(maxsize=1)
+def build_orchestrator() -> QueryOrchestrator:
+    embedder = EmbeddingService()
+    return QueryOrchestrator(
+        retrievers={
+            "sql": SQLRetriever(engine=get_engine()),
+            "text": TextRetriever(embedder=embedder),
+        },
+        router=QueryRouter(),
         reranker=Reranker(),
         llm=LLMService(),
-        history=ChatHistoryService(),
     )
-    app = FastAPI()
-    app.include_router(create_router(orchestrator))
-    return app
 ```
 
 ---
@@ -164,17 +169,59 @@ User Question
 | Dev 2 | Text/Vector Retrieval | `app/retrieval/text_pipeline/` | `BaseRetriever` |
 | Dev 3 | Reranker | `app/retrieval/reranker/` | `BaseReranker` |
 | Dev 4 | LLM Interaction | `app/llm/` | `BaseLLMService` |
-| Dev 5 | Embedding Service | `app/embedding/` | `BaseEmbeddingService` |
-| Dev 6 | Chat History | `app/history/` | `BaseChatHistory` |
+| Dev 5 | Embedding Service | `app/embedding/` | `BaseEmbeddingService` — LlamaIndex adapter |
+| Dev 6 | Chat History | `app/history/` | `BaseChatHistory` — **not wired yet, see below** |
 | Dev 7 | Web Service (API) | `app/api/` | FastAPI routes |
 
-**Shared code** (`common/`, `orchestrator/`, `server.py`) requires team lead review for changes.
+**Shared code** (`common/`, `orchestrator/`, `composition.py`, `server.py`,
+`api/schemas.py`, `worker/`) requires team lead review for changes.
+
+### Embedding — how it is wired
+
+`EmbeddingService` is an adapter around a **local LlamaIndex embedding
+model**. The plumbing is already done: lazy one-per-process loading,
+inference offloaded to a thread behind a semaphore, `warm_up()` at worker
+startup (a worker whose model fails to load refuses to start), and
+`get_model()` for LlamaIndex code. Pass the model explicitly —
+`VectorStoreIndex(..., embed_model=await embedder.get_model())` — and do
+not set the global `llama_index.core.Settings.embed_model`.
+
+Dev 5 only fills in `_build_model()` (model choice and options) and the
+two `*_sync` bodies (any prefix the chosen model requires).
+
+`embed()` vs `embed_query()`: asymmetric models (e5, bge) need a different
+prefix for queries than for documents, so retrieval code must call
+`embed_query()`.
+
+The same instance is injected into `TextRetriever` from `composition.py` —
+one model per process, never one per module.
+
+### Chat history — current status
+
+The service is **stateless today**: `QueryOrchestrator` does not read or
+write conversation history, and `ChatHistoryService` is not wired into
+`composition.py`. The slot is deliberately kept in place
+(`QueryOrchestrator(history=...)` and `BaseLLMService.generate(history=...)`)
+so history can be plugged in later without changing shared signatures.
+
+The open design question is where history comes from:
+
+1. **Core Service sends it with the question** — the RAG service stays
+   stateless and `app/history/` disappears. Simplest, preferred.
+2. **The RAG service reads it from the database** — a second source of
+   truth that has to stay in sync with Core.
+
+Do not build on `app/history/` until this is decided.
 
 ---
 
 ## Shared Infrastructure (`common/`)
 
 ### Configuration (`common/config.py`)
+
+> Values loaded from `.env` live only on the `settings` object. They are
+> **not** pushed into `os.environ`, so `os.environ["DATABASE_URL"]` will
+> raise even when the variable is present in `.env`.
 
 All environment variables are centralized in a Pydantic Settings class:
 
@@ -254,6 +301,7 @@ Create your implementation class in your module directory. For example, Dev 3 (R
 from common.interfaces import BaseReranker, RetrievalResult
 from common.logger import get_logger
 
+
 class Reranker(BaseReranker):
     def __init__(self):
         self._logger = get_logger("rag.reranker")
@@ -273,6 +321,7 @@ import asyncio
 from retrieval.reranker.reranker import Reranker
 from common.interfaces import RetrievalResult
 
+
 async def test():
     reranker = Reranker()
     mock_results = [
@@ -281,33 +330,102 @@ async def test():
     ranked = await reranker.rerank("test query", mock_results)
     print(ranked)
 
+
 asyncio.run(test())
 ```
 
-### Step 4: The team lead wires it in `main.py`
+### Step 4: The team lead wires it in `composition.py`
 
-Once your module is ready, it gets registered in `create_app()` in `main.py`.
+Once your module is ready, it gets registered in `build_orchestrator()` in `composition.py`.
 
 ---
 
 ## Running the Service
 
-### Web server (default)
-```bash
-python app/main.py
-```
-Starts FastAPI on the configured port (default: 8000).
+Always run from the `ai-team/` directory.
 
-### Legacy script mode (original behavior)
 ```bash
-python app/main.py --legacy
+make install          # dependencies
+cp .env.example .env  # then fill in the values
+make infra            # Postgres + Redis
+make dev              # API on :8000   (uvicorn --factory app.server:create_app)
+make worker           # second terminal: TaskIQ worker
 ```
-Runs the original SQL query script (unchanged).
 
-### With Docker
-```bash
-docker-compose up
+Set `USE_QUEUE=false` in `.env` to run jobs inside the API process and
+skip Redis entirely. That mode loses jobs on restart — development only.
+
+---
+
+## Job Execution
+
+A question is never processed inside the HTTP request. `/rag/query` ACKs
+immediately and hands the work to `app/api/jobs.py`, which enqueues it on
+a TaskIQ broker backed by Redis Streams.
+
 ```
+POST /rag/query ──► ACK {"status":"OK"}   (~2 ms)
+        │
+        └─► Redis Stream ──► TaskIQ worker ──► QueryOrchestrator ──► POST /rag/callback
+```
+
+Why TaskIQ and not Celery:
+
+- **The queue is async-native.** A RAG query spends ~95% of its wall time
+  waiting on the network (vector store, LLM API). One asyncio worker keeps
+  hundreds of those waits in flight; Celery's prefork pool would reserve a
+  whole OS process — and a whole copy of the local embedding model — per
+  in-flight question.
+- **Jobs survive a restart.** Redis Streams consumer groups only drop a
+  message once it is acknowledged, so a job whose worker died is
+  re-delivered to another worker.
+- **The callback is its own task.** `process_query_task` runs the pipeline
+  and enqueues `deliver_callback_task`. Callback retries (exponential
+  backoff inside `send_callback`) never re-run retrieval or the LLM, and a
+  worker that dies after the LLM answered does not lose the answer.
+- **Redelivery timeout is derived, not guessed.** `idle_timeout` is the
+  slowest task (pipeline timeout, or the callback's worst case) plus a
+  margin — see `Settings.job_idle_timeout_seconds`. Change a timeout and it
+  follows.
+- **Concurrency is a dial:** `MAX_CONCURRENT_JOBS` (used by both
+  `--max-async-tasks` and the in-process broker). Size it to the LLM
+  provider's quota, not to the embedding semaphore.
+
+### Where CPU work belongs
+
+The embedding model and the reranker are CPU/GPU-bound and must never run
+directly on the worker's event loop. Today `EmbeddingService` offloads
+inference with `asyncio.to_thread` behind a semaphore, which works because
+torch/ONNX release the GIL inside their native kernels.
+
+At real scale, move the models behind a dedicated inference service (TEI,
+vLLM, ...). The worker then becomes purely I/O-bound, one copy of each
+model serves every worker, and the inference server can batch concurrent
+requests. Workers and GPUs scale independently.
+
+Every accepted question results in a `POST /rag/callback`, success or
+failure. Delivery is **at-least-once**, not exactly-once: a redelivered
+message can produce a second callback, so Core should deduplicate. Doing
+that reliably needs a `requestId` in the contract (open item with the Core
+team).
+
+"Nothing found" and "the search failed" are different answers: if no
+results came back and any retriever failed or timed out, the pipeline
+raises and the user gets the error message, not `NO_RESULTS_FOUND`.
+
+---
+
+## Shared Files You Should Know
+
+| File | What it gives you |
+|---|---|
+| `app/common/interfaces.py` | the contracts — do not change alone |
+| `app/common/fakes.py` | fake implementation of every interface, for local testing |
+| `app/common/constants.py` | user-facing strings (error / no-results) |
+| `app/common/context.py` | request id, automatically added to every log line |
+| `app/composition.py` | the only place concrete classes are imported |
+| `app/worker/broker.py` | queue configuration (Redis Streams / in-memory) |
+| `tests/test_interfaces_contract.py` | add your class here when your module is ready |
 
 ---
 
@@ -316,7 +434,7 @@ docker-compose up
 1. **Work on your own branch:** `feature/<module-name>` (e.g., `feature/reranker`)
 2. **Only modify files in your directory.** Never modify another developer's module.
 3. **Changes to `common/interfaces.py` require approval from all team members.**
-4. **Changes to `main.py` and `orchestrator/` require team lead review.**
+4. **Changes to `composition.py` and `orchestrator/` require team lead review.**
 5. **PR to `develop` branch for integration testing** before merging to `main`.
 
 ---
@@ -328,7 +446,7 @@ docker-compose up
 
 > ⚠️ **NEVER import another developer's concrete class in your module.**
 > Only import from `common/` (interfaces, config, logger, exceptions).
-> The only file that imports concrete classes is `main.py`.
+> The only file that imports concrete classes is `composition.py`.
 
 > ⚠️ **ALWAYS use `common/config.settings` for configuration.**
 > Do not use `os.environ` directly.
@@ -338,3 +456,16 @@ docker-compose up
 
 > ⚠️ **ALWAYS raise exceptions from `common/exceptions`.**
 > Do not create module-specific exception classes outside the shared hierarchy.
+
+> ⚠️ **NEVER call blocking code directly inside `async def`.**
+> Models, `requests`, llama-index and friends must run through
+> `await asyncio.to_thread(...)`. One blocking call freezes every
+> concurrent request in that process.
+
+> ⚠️ **ALWAYS use absolute imports rooted at `app.`**
+> `from app.common.interfaces import BaseRetriever` — never `from common...`.
+> Run every command from the `ai-team/` directory.
+
+> ⚠️ **NEVER add or rename a field in `api/schemas.py` on your own.**
+> That file is the wire contract with the Java Core Service. Jackson
+> rejects unknown properties by default, so an extra field breaks them.
