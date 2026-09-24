@@ -1,4 +1,5 @@
 import os
+
 import pandas as pd
 import psycopg2
 
@@ -6,10 +7,12 @@ CSV_PATH = "data/classes.csv"
 
 BOOL_COLUMNS = ["has_theory", "has_practical", "has_exercise", "has_exam"]
 
+
 def to_bool(value):
     if pd.isna(value):
         return None
     return str(value).strip().upper() == "TRUE"
+
 
 def main():
     df = pd.read_csv(CSV_PATH, sep=",", encoding="utf-8-sig")
@@ -70,6 +73,7 @@ def main():
     cur.close()
     conn.close()
     print(f"Inserted {len(df)} rows into classes table.")
+
 
 if __name__ == "__main__":
     main()

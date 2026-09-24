@@ -2,29 +2,54 @@ services:
   db:
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-university_db}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme}
     volumes:
       - pgdata:/var/lib/postgresql/data
     ports:
       - "5432:5432"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-university_db}"]
       interval: 5s
       retries: 5
 
-  app:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 5
+
+  rag-api:
     build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-university_db}
+      REDIS_URL: redis://redis:6379/0
+      USE_QUEUE: "false"          # in-process jobs — no worker needed for smoke test
     depends_on:
       db:
         condition: service_healthy
-    env_file: .env
-    environment:
-      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
-    volumes:
-      - ./app:/app/app
-      - ./data:/app/data
+
+  # Uncomment to run with a separate worker (USE_QUEUE=true in .env):
+  # rag-worker:
+  #   build: .
+  #   command: ["taskiq", "worker", "app.worker.broker:broker", "--max-async-tasks", "30"]
+  #   env_file: .env
+  #   environment:
+  #     DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-university_db}
+  #     REDIS_URL: redis://redis:6379/0
+  #     USE_QUEUE: "true"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #     redis:
+  #       condition: service_healthy
 
 volumes:
   pgdata:
