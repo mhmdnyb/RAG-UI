@@ -7,4 +7,5 @@ ignore = ["E501", "B008"]
 
 [lint.per-file-ignores]
 "tests/*" = ["E402"]
+"scripts/*" = ["E402"]
 "app/retrieval/sql_pipeline/*" = ["ALL"]  # owned by the SQL developer

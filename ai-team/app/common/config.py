@@ -57,7 +57,8 @@ class Settings(BaseSettings):
     router_api_key: str = ""
     router_temperature: float = 0.0
 
-    embedding_model: str = "intfloat/multilingual-e5-base"
+    embedding_model: str = "BAAI/bge-m3"
+    embedding_dim: int = 1024
     embedding_device: str = "cpu"
     embedding_batch_size: int = 32
     # Keep near the core count on CPU, low on GPU, or it thrashes.

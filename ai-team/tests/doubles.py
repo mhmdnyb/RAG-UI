@@ -16,3 +16,28 @@ class FakeLlamaEmbedModel:
     def get_query_embedding(self, text):
         self.query_calls.append(text)
         return [1.0] * self.dim
+
+
+class FakeLlamaIndex:
+    """Stand-in for VectorStoreIndex so TextRetriever contract test does not require a database."""
+
+    def __init__(self, items=None):
+        from unittest.mock import MagicMock
+
+        if items is None:
+            node = MagicMock()
+            node.get_content.return_value = "متن نمونه"
+            node.metadata = {"title": "آیین‌نامه نمونه"}
+            item = MagicMock()
+            item.node = node
+            item.score = 0.9
+            self._items = [item]
+        else:
+            self._items = items
+
+    def as_retriever(self, similarity_top_k: int = 5):
+        from unittest.mock import AsyncMock, MagicMock
+
+        mock = MagicMock()
+        mock.aretrieve = AsyncMock(return_value=self._items[:similarity_top_k])
+        return mock
