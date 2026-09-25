@@ -51,3 +51,40 @@ class ReadyResponse(BaseModel):
     status: str
     database: str
     queue: str
+
+
+class RegulationsUploadResponse(BaseModel):
+    status: str = "success"
+    filename: str
+    parent_articles_count: int
+    child_chunks_count: int
+    cleared_existing: bool
+
+
+class PreEmbeddedArticleItem(BaseModel):
+    id: str
+    section: str
+    title: str
+    full_text: str
+
+
+class PreEmbeddedChunkItem(BaseModel):
+    id: str
+    text: str
+    metadata: dict = Field(default_factory=dict)
+    embedding: list[float]
+
+
+class PreEmbeddedImportRequest(BaseModel):
+    version: str = "1.0"
+    embedding_model: str = "BAAI/bge-m3"
+    parent_articles: list[PreEmbeddedArticleItem]
+    chunks: list[PreEmbeddedChunkItem]
+    clear_existing: bool = True
+
+
+class PreEmbeddedImportResponse(BaseModel):
+    status: str = "success"
+    parent_articles_count: int
+    child_chunks_count: int
+    cleared_existing: bool

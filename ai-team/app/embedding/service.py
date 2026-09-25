@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from logging import Logger
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from app.common.config import settings
 from app.common.exceptions import EmbeddingError
@@ -36,7 +36,6 @@ class EmbeddingService(BaseEmbeddingService):
         self._semaphore = asyncio.Semaphore(settings.embedding_max_concurrency)
 
     def _build_model(self) -> BaseEmbedding:
-        # TODO(#5): confirm the model choice and its options
         from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
         self._logger.info(
@@ -70,7 +69,9 @@ class EmbeddingService(BaseEmbeddingService):
         model = await self.get_model()
         try:
             async with self._semaphore:
-                return await asyncio.to_thread(self._embed_documents_sync, model, texts)
+                return await asyncio.to_thread(
+                    model.get_text_embedding_batch, texts, show_progress=False
+                )
         except Exception as e:
             self._logger.error(f"Embedding failed: {e}", exc_info=True)
             raise EmbeddingError(f"Embedding failed: {e}") from e
@@ -79,20 +80,7 @@ class EmbeddingService(BaseEmbeddingService):
         model = await self.get_model()
         try:
             async with self._semaphore:
-                return await asyncio.to_thread(self._embed_query_sync, model, text)
+                return await asyncio.to_thread(model.get_query_embedding, text)
         except Exception as e:
             self._logger.error(f"Query embedding failed: {e}", exc_info=True)
             raise EmbeddingError(f"Query embedding failed: {e}") from e
-
-    # Inference runs in a thread: torch releases the GIL in its native
-    # kernels, so this gives real parallelism and keeps the loop free.
-
-    @staticmethod
-    def _embed_documents_sync(model: Any, texts: list[str]) -> list[list[float]]:
-        # TODO(#5): add the document prefix if the model needs one
-        return model.get_text_embedding_batch(texts, show_progress=False)
-
-    @staticmethod
-    def _embed_query_sync(model: Any, text: str) -> list[float]:
-        # TODO(#5): add the query prefix if the model needs one
-        return model.get_query_embedding(text)

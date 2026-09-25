@@ -140,3 +140,140 @@ def test_failed_callback_does_not_rerun_the_pipeline(orchestrator, monkeypatch):
 
     assert runs == 1
     assert attempts == 1
+
+
+def test_upload_regulations_requires_token(client):
+    r = client.post(
+        "/rag/regulations/upload",
+        files={"file": ("test.txt", b"sample content", "text/plain")},
+    )
+    assert r.status_code == 401
+
+
+def test_upload_regulations_empty_file_rejected(client):
+    r = client.post(
+        "/rag/regulations/upload",
+        files={"file": ("empty.txt", b"", "text/plain")},
+        headers=AUTH,
+    )
+    assert r.status_code == 400
+    assert "empty" in r.json()["detail"].lower()
+
+
+def test_upload_regulations_success(client, monkeypatch):
+    from app.retrieval.text_pipeline.ingest import IngestionResult
+
+    async def fake_ingest(text, clear_existing=True, embedder=None):
+        return IngestionResult(
+            parent_articles_count=3,
+            child_chunks_count=10,
+            cleared_existing=clear_existing,
+        )
+
+    monkeypatch.setattr(
+        "app.retrieval.text_pipeline.ingest.ingest_regulations_text",
+        fake_ingest,
+    )
+
+    r = client.post(
+        "/rag/regulations/upload",
+        files={"file": ("regulations.txt", b"sample regulations text", "text/plain")},
+        headers=AUTH,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "success"
+    assert data["filename"] == "regulations.txt"
+    assert data["parent_articles_count"] == 3
+    assert data["child_chunks_count"] == 10
+    assert data["cleared_existing"] is True
+
+
+def test_import_embedded_regulations_success(client, monkeypatch):
+    from app.retrieval.text_pipeline.ingest import IngestionResult
+
+    async def fake_import(parents, chunks, clear_existing=True):
+        return IngestionResult(
+            parent_articles_count=len(parents),
+            child_chunks_count=len(chunks),
+            cleared_existing=clear_existing,
+        )
+
+    monkeypatch.setattr(
+        "app.retrieval.text_pipeline.ingest.import_precomputed_regulations",
+        fake_import,
+    )
+
+    payload = {
+        "version": "1.0",
+        "embedding_model": "BAAI/bge-m3",
+        "parent_articles": [
+            {"id": "art_1", "section": "sec", "title": "m1", "full_text": "text"}
+        ],
+        "chunks": [
+            {
+                "id": "c_1",
+                "text": "chunk text",
+                "metadata": {"type": "base"},
+                "embedding": [0.1] * 1024,
+            }
+        ],
+        "clear_existing": True,
+    }
+
+    r = client.post(
+        "/rag/regulations/import-embedded",
+        json=payload,
+        headers=AUTH,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "success"
+    assert data["parent_articles_count"] == 1
+    assert data["child_chunks_count"] == 1
+
+
+def test_import_embedded_regulations_file_success(client, monkeypatch):
+    import json
+
+    from app.retrieval.text_pipeline.ingest import IngestionResult
+
+    async def fake_import(parents, chunks, clear_existing=True):
+        return IngestionResult(
+            parent_articles_count=len(parents),
+            child_chunks_count=len(chunks),
+            cleared_existing=clear_existing,
+        )
+
+    monkeypatch.setattr(
+        "app.retrieval.text_pipeline.ingest.import_precomputed_regulations",
+        fake_import,
+    )
+
+    payload = {
+        "version": "1.0",
+        "embedding_model": "BAAI/bge-m3",
+        "parent_articles": [
+            {"id": "art_1", "section": "sec", "title": "m1", "full_text": "text"}
+        ],
+        "chunks": [
+            {
+                "id": "c_1",
+                "text": "chunk text",
+                "metadata": {"type": "base"},
+                "embedding": [0.1] * 1024,
+            }
+        ],
+    }
+
+    content = json.dumps(payload).encode("utf-8")
+    r = client.post(
+        "/rag/regulations/import-embedded-file",
+        files={"file": ("embedded.json", content, "application/json")},
+        headers=AUTH,
+    )
+    assert r.status_code == 200
+    data = r.json()
+    assert data["status"] == "success"
+    assert data["parent_articles_count"] == 1
+    assert data["child_chunks_count"] == 1
