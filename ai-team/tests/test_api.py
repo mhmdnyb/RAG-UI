@@ -277,3 +277,13 @@ def test_import_embedded_regulations_file_success(client, monkeypatch):
     assert data["status"] == "success"
     assert data["parent_articles_count"] == 1
     assert data["child_chunks_count"] == 1
+
+
+def test_import_embedded_regulations_file_invalid_json(client):
+    r = client.post(
+        "/rag/regulations/import-embedded-file",
+        files={"file": ("embedded.json", b"not valid json", "application/json")},
+        headers=AUTH,
+    )
+    assert r.status_code == 400
+    assert "invalid json" in r.json()["detail"].lower()

@@ -5,6 +5,7 @@ GET  /ready       readiness
 """
 
 import asyncio
+import json
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
 
@@ -137,7 +138,7 @@ def create_router() -> APIRouter:
             result = await import_precomputed_file_contents(
                 contents, clear_existing=clear_existing
             )
-        except Exception:
+        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
             raise HTTPException(
                 status_code=400, detail="Invalid JSON file format"
             ) from None

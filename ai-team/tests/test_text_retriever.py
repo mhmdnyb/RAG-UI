@@ -152,6 +152,15 @@ def test_parser_appendix_definitions():
     assert "دانشجو" in art.chunks[0].title
     assert "فردی که پس از قبولی" in art.chunks[0].context_injected_text
 
+
+def test_to_text_nodes():
+    pytest.importorskip("llama_index")
+    sample_text = (
+        "پیوست شماره ۱: تعاریف و اصطلاحات\n"
+        "یک: دانشجو: فردی که پس از قبولی در دانشگاه ثبت‌نام کرده است.\n"
+        "دو: استاد: عضو هیئت علمی دانشگاه."
+    )
+    articles = parse_regulations(sample_text)
     nodes = to_text_nodes(articles)
     assert len(nodes) == 2
-    assert nodes[0].metadata["type"] == ChunkType.DEFINITION
+    assert nodes[0].metadata["type"] == str(ChunkType.DEFINITION)

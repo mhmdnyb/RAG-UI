@@ -41,7 +41,7 @@ async def build_embedded_payload() -> dict:
                     "text": c.context_injected_text,
                     "metadata": {
                         "article_id": a.id,
-                        "type": c.chunk_type,
+                        "type": str(c.chunk_type),
                         "title": c.title,
                         "section": a.section,
                     },
