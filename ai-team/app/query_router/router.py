@@ -51,13 +51,15 @@ class QueryRouter(BaseQueryRouter):
         logger: Logger | None = None,
     ):
         self._logger = logger or get_logger(__name__)
-        self._model = model or settings.router_model
+        self._model = model or settings.resolved_router_model
         self._temperature = (
             temperature if temperature is not None else settings.router_temperature
         )
-        self._base_url = base_url if base_url is not None else settings.router_base_url
+        self._base_url = (
+            base_url if base_url is not None else settings.resolved_router_base_url
+        )
 
-        resolved_api_key = api_key or settings.router_api_key or settings.openai_api_key
+        resolved_api_key = api_key or settings.resolved_router_api_key
 
         if client is not None:
             self._client = client

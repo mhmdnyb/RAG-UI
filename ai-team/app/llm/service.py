@@ -64,7 +64,7 @@ class LLMService(BaseLLMService):
         logger: Logger | None = None,
     ):
         self._logger = logger or get_logger(__name__)
-        self._model = model or settings.llm_model
+        self._model = model or settings.resolved_llm_model
         self._temperature = (
             temperature if temperature is not None else settings.llm_temperature
         )
@@ -74,11 +74,11 @@ class LLMService(BaseLLMService):
         self._base_url = (
             base_url
             if base_url is not None
-            else (settings.llm_base_url or os.getenv("GAPGPT_BASE_URL"))
+            else (settings.resolved_llm_base_url or os.getenv("GAPGPT_BASE_URL"))
         )
 
         resolved_api_key = (
-            api_key or settings.openai_api_key or os.getenv("GAPGPT_API_KEY")
+            api_key or settings.resolved_llm_api_key or os.getenv("GAPGPT_API_KEY")
         )
 
         if client is not None:
