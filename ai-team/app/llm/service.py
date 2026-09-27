@@ -78,7 +78,9 @@ class LLMService(BaseLLMService):
         )
 
         resolved_api_key = (
-            api_key or settings.resolved_llm_api_key or os.getenv("GAPGPT_API_KEY")
+            api_key
+            if api_key is not None
+            else (settings.resolved_llm_api_key or os.getenv("GAPGPT_API_KEY"))
         )
 
         if client is not None:

@@ -19,15 +19,20 @@ from app.llm.service import LLMService
 from app.query_router.router import QueryRouter
 from app.retrieval.reranker.reranker import Reranker
 from app.retrieval.text_pipeline.retriever import TextRetriever
-from tests.doubles import FakeCrossEncoder, FakeLlamaEmbedModel, FakeLlamaIndex
+from tests.doubles import (
+    FakeAsyncOpenAI,
+    FakeCrossEncoder,
+    FakeLlamaEmbedModel,
+    FakeLlamaIndex,
+)
 
 # SQLRetriever is omitted: importing it pulls in llama-index. Add it
 # once that import is lazy.
 RETRIEVERS = [FakeRetriever(), TextRetriever(index=FakeLlamaIndex())]
 RERANKERS = [FakeReranker(), Reranker(model=FakeCrossEncoder())]
-LLMS = [FakeLLM(), LLMService()]
+LLMS = [FakeLLM(), LLMService(client=FakeAsyncOpenAI())]
 EMBEDDERS = [FakeEmbedding(), EmbeddingService(model=FakeLlamaEmbedModel())]
-ROUTERS = [FakeRouter(), QueryRouter()]
+ROUTERS = [FakeRouter(), QueryRouter(client=FakeAsyncOpenAI("text"))]
 
 
 @pytest.mark.parametrize("retriever", RETRIEVERS)

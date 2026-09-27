@@ -59,7 +59,9 @@ class QueryRouter(BaseQueryRouter):
             base_url if base_url is not None else settings.resolved_router_base_url
         )
 
-        resolved_api_key = api_key or settings.resolved_router_api_key
+        resolved_api_key = (
+            api_key if api_key is not None else settings.resolved_router_api_key
+        )
 
         if client is not None:
             self._client = client
