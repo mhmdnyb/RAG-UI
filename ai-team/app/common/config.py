@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.1
     llm_max_tokens: int = 1024
+    llm_base_url: str | None = None
 
     # Query Router (OpenRouter or OpenAI compatible)
     router_model: str = "meta-llama/llama-3.1-8b-instruct"
