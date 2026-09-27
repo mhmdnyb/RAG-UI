@@ -41,3 +41,10 @@ class FakeLlamaIndex:
         mock = MagicMock()
         mock.aretrieve = AsyncMock(return_value=self._items[:similarity_top_k])
         return mock
+
+
+class FakeCrossEncoder:
+    """Stand-in for CrossEncoder so Reranker contract test does not download models in CI."""
+
+    def predict(self, pairs, **kwargs):
+        return [float(len(p[1])) for p in pairs]

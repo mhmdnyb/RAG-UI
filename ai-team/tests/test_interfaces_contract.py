@@ -19,12 +19,12 @@ from app.llm.service import LLMService
 from app.query_router.router import QueryRouter
 from app.retrieval.reranker.reranker import Reranker
 from app.retrieval.text_pipeline.retriever import TextRetriever
-from tests.doubles import FakeLlamaEmbedModel, FakeLlamaIndex
+from tests.doubles import FakeCrossEncoder, FakeLlamaEmbedModel, FakeLlamaIndex
 
 # SQLRetriever is omitted: importing it pulls in llama-index. Add it
 # once that import is lazy.
 RETRIEVERS = [FakeRetriever(), TextRetriever(index=FakeLlamaIndex())]
-RERANKERS = [FakeReranker(), Reranker()]
+RERANKERS = [FakeReranker(), Reranker(model=FakeCrossEncoder())]
 LLMS = [FakeLLM(), LLMService()]
 EMBEDDERS = [FakeEmbedding(), EmbeddingService(model=FakeLlamaEmbedModel())]
 ROUTERS = [FakeRouter(), QueryRouter()]

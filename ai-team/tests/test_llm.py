@@ -70,7 +70,7 @@ async def test_generation_happy_path_calls_client():
     messages = call_kwargs["messages"]
     assert len(messages) == 2
     assert messages[0]["role"] == "system"
-    assert "You are a university assistant." in messages[0]["content"]
+    assert "کارشناس حقوقی" in messages[0]["content"]
     assert "[rules.pdf, صفحه 10]" in messages[0]["content"]
     assert "اطلاعات درس" in messages[0]["content"]
     assert messages[1]["role"] == "user"

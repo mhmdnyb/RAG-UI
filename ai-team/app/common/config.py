@@ -68,6 +68,10 @@ class Settings(BaseSettings):
     # Retrieval
     retrieval_top_k: int = 10
     reranker_top_k: int = 3
+    reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    reranker_device: str = "cpu"
+    reranker_batch_size: int = 16
+    reranker_score_threshold: float = 0.20
 
     model_config = {
         "env_file": ".env",
