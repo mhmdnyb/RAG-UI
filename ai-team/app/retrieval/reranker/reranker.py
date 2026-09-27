@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from logging import Logger
 from typing import Any
 
@@ -113,14 +114,13 @@ class Reranker(BaseReranker):
 
             raw_scores = await asyncio.to_thread(self._predict_sync, model, pairs)
 
-            import numpy as np
-
-            scores_arr = np.array(raw_scores, dtype=np.float32)
-            probabilities = 1.0 / (1.0 + np.exp(-scores_arr))
-
-            # Update scores with calibrated probabilities
-            for item, prob in zip(results, probabilities, strict=False):
-                item.score = float(prob)
+            # Update scores with calibrated probabilities using standard library math
+            for item, raw_score in zip(results, raw_scores, strict=False):
+                s = float(raw_score)
+                if s >= 0:
+                    item.score = 1.0 / (1.0 + math.exp(-s))
+                else:
+                    item.score = math.exp(s) / (1.0 + math.exp(s))
 
             # Sort descending by score
             ranked = sorted(results, key=lambda x: x.score, reverse=True)
