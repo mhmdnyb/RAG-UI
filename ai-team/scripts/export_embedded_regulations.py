@@ -7,7 +7,10 @@ import asyncio
 import json
 from pathlib import Path
 
-from _common import PROJECT_ROOT, resolve_data_file
+try:
+    from scripts._common import PROJECT_ROOT, resolve_data_file
+except ImportError:
+    from _common import PROJECT_ROOT, resolve_data_file
 
 from app.common.config import settings
 from app.embedding.service import EmbeddingService

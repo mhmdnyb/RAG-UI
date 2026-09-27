@@ -38,13 +38,22 @@ class EmbeddingService(BaseEmbeddingService):
     def _build_model(self) -> BaseEmbedding:
         from llama_index.embeddings.huggingface import HuggingFaceEmbedding
 
+        device = settings.embedding_device
+        if device == "cpu":
+            try:
+                import torch
+
+                if torch.cuda.is_available():
+                    device = "cuda"
+            except ImportError:
+                pass
+
         self._logger.info(
-            f"Loading embedding model '{settings.embedding_model}' "
-            f"on {settings.embedding_device}"
+            f"Loading embedding model '{settings.embedding_model}' on {device}"
         )
         return HuggingFaceEmbedding(
             model_name=settings.embedding_model,
-            device=settings.embedding_device,
+            device=device,
             embed_batch_size=settings.embedding_batch_size,
         )
 

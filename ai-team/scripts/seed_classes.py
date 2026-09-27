@@ -78,7 +78,8 @@ def main():
     insert_sql = f"INSERT INTO classes ({', '.join(columns)}) VALUES ({placeholders})"
 
     for row in df.itertuples(index=False, name=None):
-        cur.execute(insert_sql, row)
+        clean_row = [None if pd.isna(val) else val for val in row]
+        cur.execute(insert_sql, clean_row)
 
     conn.commit()
     cur.close()

@@ -56,13 +56,21 @@ class Reranker(BaseReranker):
         try:
             from sentence_transformers import CrossEncoder
 
-            self._logger.info(
-                f"Loading CrossEncoder: {self._model_name} on {self._device}"
-            )
+            device = self._device
+            if device == "cpu":
+                try:
+                    import torch
+
+                    if torch.cuda.is_available():
+                        device = "cuda"
+                except ImportError:
+                    pass
+
+            self._logger.info(f"Loading CrossEncoder: {self._model_name} on {device}")
             self._model = CrossEncoder(
                 self._model_name,
                 max_length=512,
-                device=self._device,
+                device=device,
             )
             return self._model
         except Exception as e:
