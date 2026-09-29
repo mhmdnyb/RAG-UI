@@ -25,8 +25,9 @@ COPY app/ ./app/
 COPY scripts/ ./scripts/
 COPY data/ ./data/
 
-# Own everything by the non-root user
-RUN chown -R rag:rag /srv/rag
+# Ensure cache directories exist and own everything by the non-root user
+RUN mkdir -p /home/rag/.cache/huggingface /home/rag/.cache/llama_index && \
+    chown -R rag:rag /srv/rag /home/rag
 
 USER rag
 
