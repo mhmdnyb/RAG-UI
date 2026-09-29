@@ -16,8 +16,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -43,7 +41,7 @@ services:
   # Worker running asynchronous TaskIQ jobs (USE_QUEUE=true)
   rag-worker:
     build: .
-    command: ["taskiq", "worker", "app.worker.broker:broker", "--max-async-tasks", "30"]
+    command: ["taskiq", "worker", "app.worker.broker:broker", "app.worker.tasks", "--workers", "1", "--max-async-tasks", "30"]
     volumes:
       - hf_cache:/home/rag/.cache/huggingface
     env_file: .env
