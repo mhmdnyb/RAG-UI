@@ -20,9 +20,10 @@ WORKDIR /srv/rag
 COPY --from=builder /usr/local/lib/python3.12/site-packages /usr/local/lib/python3.12/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-# Copy application code
+# Copy application code and data
 COPY app/ ./app/
 COPY scripts/ ./scripts/
+COPY data/ ./data/
 
 # Own everything by the non-root user
 RUN chown -R rag:rag /srv/rag
