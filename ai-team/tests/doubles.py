@@ -41,3 +41,24 @@ class FakeLlamaIndex:
         mock = MagicMock()
         mock.aretrieve = AsyncMock(return_value=self._items[:similarity_top_k])
         return mock
+
+
+class FakeCrossEncoder:
+    """Stand-in for CrossEncoder so Reranker contract test does not download models in CI."""
+
+    def predict(self, pairs, **kwargs):
+        return [float(len(p[1])) for p in pairs]
+
+
+class FakeAsyncOpenAI:
+    """Stand-in for AsyncOpenAI so LLM and Router contract tests do not hit network."""
+
+    def __init__(self, response_text: str = "پاسخ مدل"):
+        from unittest.mock import AsyncMock, MagicMock
+
+        self.chat = MagicMock()
+        choice = MagicMock()
+        choice.message.content = response_text
+        mock_resp = MagicMock()
+        mock_resp.choices = [choice]
+        self.chat.completions.create = AsyncMock(return_value=mock_resp)

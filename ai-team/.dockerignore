@@ -6,7 +6,7 @@ __pycache__/
 .github/
 *.pyc
 *.egg-info/
-data/
+data/pdfs/
 .env
 .env.*
 !.env.example

@@ -28,28 +28,35 @@ services:
     ports:
       - "8000:8000"
     env_file: .env
+    volumes:
+      - hf_cache:/home/rag/.cache/huggingface
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-university_db}
       REDIS_URL: redis://redis:6379/0
-      USE_QUEUE: "false"          # in-process jobs — no worker needed for smoke test
+      USE_QUEUE: "true"
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  # Uncomment to run with a separate worker (USE_QUEUE=true in .env):
-  # rag-worker:
-  #   build: .
-  #   command: ["taskiq", "worker", "app.worker.broker:broker", "--max-async-tasks", "30"]
-  #   env_file: .env
-  #   environment:
-  #     DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-university_db}
-  #     REDIS_URL: redis://redis:6379/0
-  #     USE_QUEUE: "true"
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
-  #     redis:
-  #       condition: service_healthy
+  # Worker running asynchronous TaskIQ jobs (USE_QUEUE=true)
+  rag-worker:
+    build: .
+    command: ["taskiq", "worker", "app.worker.broker:broker", "--max-async-tasks", "30"]
+    volumes:
+      - hf_cache:/home/rag/.cache/huggingface
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-university_db}
+      REDIS_URL: redis://redis:6379/0
+      USE_QUEUE: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
 volumes:
   pgdata:
+  hf_cache:

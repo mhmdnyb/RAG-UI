@@ -1,9 +1,13 @@
 import os
+from pathlib import Path
 
 import pandas as pd
 import psycopg2
 
-CSV_PATH = "data/classes.csv"
+from app.common.config import settings
+
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+CSV_PATH = PROJECT_ROOT / "data" / "classes.csv"
 
 BOOL_COLUMNS = ["has_theory", "has_practical", "has_exercise", "has_exam"]
 
@@ -15,14 +19,21 @@ def to_bool(value):
 
 
 def main():
-    df = pd.read_csv(CSV_PATH, sep=",", encoding="utf-8-sig")
+    if not CSV_PATH.exists():
+        fallback = Path("data/classes.csv")
+        csv_file = fallback if fallback.exists() else CSV_PATH
+    else:
+        csv_file = CSV_PATH
+
+    df = pd.read_csv(csv_file, sep=",", encoding="utf-8-sig")
 
     for col in BOOL_COLUMNS:
         df[col] = df[col].apply(to_bool)
 
     df = df.where(pd.notnull(df), None)
 
-    conn = psycopg2.connect(os.environ["DATABASE_URL"])
+    db_url = os.getenv("DATABASE_URL") or settings.database_url
+    conn = psycopg2.connect(db_url)
     cur = conn.cursor()
 
     cur.execute("DROP TABLE IF EXISTS classes;")  # schema changed, start fresh
@@ -67,7 +78,8 @@ def main():
     insert_sql = f"INSERT INTO classes ({', '.join(columns)}) VALUES ({placeholders})"
 
     for row in df.itertuples(index=False, name=None):
-        cur.execute(insert_sql, row)
+        clean_row = [None if pd.isna(val) else val for val in row]
+        cur.execute(insert_sql, clean_row)
 
     conn.commit()
     cur.close()

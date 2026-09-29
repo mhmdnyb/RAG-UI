@@ -247,6 +247,9 @@ def to_text_nodes(articles: list[ParsedRegulationArticle]) -> list[TextNode]:
                 text=chunk.context_injected_text,
                 metadata={
                     "article_id": article.id,
+                    "parent_id": article.id,
+                    "parent_title": article.title,
+                    "parent_full_text": article.full_text,
                     "section": article.section,
                     "type": str(chunk.chunk_type),
                     "title": chunk.title,

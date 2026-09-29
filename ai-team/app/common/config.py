@@ -45,16 +45,23 @@ class Settings(BaseSettings):
     db_pool_timeout_seconds: float = 30.0
     db_statement_timeout_ms: int = 30_000
 
-    # LLM
-    openai_api_key: str = ""
-    llm_model: str = "gpt-4o-mini"
+    # ── Default LLM (Global fallback for all LLM calls) ────────
+    default_llm_api_key: str = ""
+    default_llm_base_url: str | None = None
+    default_llm_model: str = "gpt-4o-mini"
+    openai_api_key: str = ""  # Standard alias / fallback for default_llm_api_key
+
+    # ── Answer Generation LLM (Overrides default if set) ──────
+    llm_api_key: str = ""
+    llm_base_url: str | None = None
+    llm_model: str = ""
     llm_temperature: float = 0.1
     llm_max_tokens: int = 1024
 
-    # Query Router (OpenRouter or OpenAI compatible)
-    router_model: str = "meta-llama/llama-3.1-8b-instruct"
-    router_base_url: str | None = "https://openrouter.ai/api/v1"
+    # ── Query Router LLM (Overrides default if set) ────────────
     router_api_key: str = ""
+    router_base_url: str | None = None
+    router_model: str = ""
     router_temperature: float = 0.0
 
     embedding_model: str = "BAAI/bge-m3"
@@ -67,6 +74,46 @@ class Settings(BaseSettings):
     # Retrieval
     retrieval_top_k: int = 10
     reranker_top_k: int = 3
+    reranker_model: str = "BAAI/bge-reranker-v2-m3"
+    reranker_device: str = "cpu"
+    reranker_batch_size: int = 16
+    reranker_score_threshold: float = 0.20
+
+    @property
+    def effective_default_api_key(self) -> str:
+        return self.default_llm_api_key or self.openai_api_key
+
+    @property
+    def resolved_llm_api_key(self) -> str:
+        return self.llm_api_key or self.effective_default_api_key
+
+    @property
+    def resolved_llm_base_url(self) -> str | None:
+        return (
+            self.llm_base_url
+            if self.llm_base_url is not None
+            else self.default_llm_base_url
+        )
+
+    @property
+    def resolved_llm_model(self) -> str:
+        return self.llm_model or self.default_llm_model
+
+    @property
+    def resolved_router_api_key(self) -> str:
+        return self.router_api_key or self.effective_default_api_key
+
+    @property
+    def resolved_router_base_url(self) -> str | None:
+        return (
+            self.router_base_url
+            if self.router_base_url is not None
+            else self.default_llm_base_url
+        )
+
+    @property
+    def resolved_router_model(self) -> str:
+        return self.router_model or self.default_llm_model
 
     model_config = {
         "env_file": ".env",

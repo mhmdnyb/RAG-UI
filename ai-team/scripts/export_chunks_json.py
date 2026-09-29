@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import json
 
-from _common import resolve_data_file
+try:
+    from scripts._common import resolve_data_file
+except ImportError:
+    from _common import resolve_data_file
 
 from app.retrieval.text_pipeline.parser import (
     ChunkType,
