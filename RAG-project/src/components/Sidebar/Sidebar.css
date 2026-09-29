@@ -1,0 +1,13 @@
+@import "tailwindcss";
+@theme {
+  --color-dominant: #262626;
+  --color-dominant-surface: #1e1e1e;
+
+  --color-thirtypercent: #d3fbd8;
+  --color-thirtypercent-light: #e0ffef;
+  --color-thirtypercent-muted: #8ca391;
+
+  --color-tenpercent: #00c6cf;
+  --color-tenpercent-dark: #00aab2;
+  --animate-sidebar: sidebar 300ms ease-in-out;
+}
