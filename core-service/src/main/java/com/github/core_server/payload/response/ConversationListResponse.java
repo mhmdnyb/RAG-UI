@@ -8,6 +8,7 @@ import lombok.Setter;
 @Setter
 @Builder
 public class ConversationListResponse {
+    private String conversationId;
     private String name;
     private String createdAt;
 }

@@ -23,20 +23,6 @@ public class RagClient {
     }
 
     public RagQueryResponse sendQuestion(RagQueryRequest request) {
-
-        String json = """
-            {
-                "conversationId": "%s",
-                "question": "%s"
-            }
-            """.formatted(
-                request.getConversationId(),
-                request.getQuestion()
-        );
-
-        System.out.println("JSON SENT TO RAG:");
-        System.out.println(json);
-
         return restClient.post()
                 .uri("/rag/query")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -45,7 +31,7 @@ public class RagClient {
                         HttpHeaders.AUTHORIZATION,
                         "Bearer " + ragServiceToken
                 )
-                .body(json)
+                .body(request)
                 .retrieve()
                 .body(RagQueryResponse.class);
     }

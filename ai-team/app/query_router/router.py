@@ -67,9 +67,9 @@ class QueryRouter(BaseQueryRouter):
             self._client = client
         elif resolved_api_key:
             try:
-                from openai import AsyncOpenAI
+                from app.llm.client import create_async_openai_client
 
-                self._client = AsyncOpenAI(
+                self._client = create_async_openai_client(
                     api_key=resolved_api_key,
                     base_url=self._base_url or None,
                 )

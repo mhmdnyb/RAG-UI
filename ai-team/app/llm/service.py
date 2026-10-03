@@ -23,6 +23,10 @@ SYSTEM_PROMPT = """تو کارشناس حقوقی و مشاور دقیق آیی�
 مستندات قانونی:
 {context}"""
 
+GENERAL_SYSTEM_PROMPT = """تو دستیار هوشمند و مشاور آموزشی دانشگاه هستی. به سوالات دانشجویان با کمال دقت، ادب و به زبان فارسی روان پاسخ بده.
+اگر سوال درباره موضوعات دانشگاهی، کلاس‌ها، اساتید، راهنمایی تحصیلی یا گفتگو و احوال‌پرسی است، با خوش‌رویی و به بهترین شکل پاسخ بده.
+اگر در مورد قانون یا آیین‌نامه خاصی منبعی در اختیارت نیست، با ذکر این که اطلاعات مربوطه در سیستم ثبت نشده، راهنمایی کلی ارائه کن و به اداره آموزش دانشگاه ارجاع بده."""
+
 
 def _format_context(context: list[RetrievalResult] | str) -> str:
     """Format retrieval results into readable text with document sources."""
@@ -87,11 +91,11 @@ class LLMService(BaseLLMService):
             self._client = client
         elif resolved_api_key:
             try:
-                from openai import AsyncOpenAI
+                from app.llm.client import create_async_openai_client
 
-                self._client = AsyncOpenAI(
+                self._client = create_async_openai_client(
                     api_key=resolved_api_key,
-                    base_url=self._base_url or None,
+                    base_url=self._base_url,
                 )
             except ImportError:
                 self._client = None
@@ -119,20 +123,17 @@ class LLMService(BaseLLMService):
         actual_query = query or kwargs.get("question", "")
         raw_context = context if context is not None else kwargs.get("context", [])
 
-        if not raw_context:
-            return NO_RESULTS_FOUND
+        formatted_context = _format_context(raw_context) if raw_context else ""
 
-        formatted_context = _format_context(raw_context)
-        if not formatted_context.strip():
-            return NO_RESULTS_FOUND
+        if formatted_context.strip():
+            system_prompt = SYSTEM_PROMPT.replace("{context}", formatted_context)
+        else:
+            system_prompt = GENERAL_SYSTEM_PROMPT
 
         if self._client is None:
-            self._logger.warning(
-                "LLMService: Client not initialized (missing API key) — returning raw context"
-            )
-            return formatted_context
-
-        system_prompt = SYSTEM_PROMPT.replace("{context}", formatted_context)
+            if formatted_context.strip():
+                return formatted_context
+            return NO_RESULTS_FOUND
 
         messages: list[dict[str, str]] = [
             {"role": "system", "content": system_prompt},

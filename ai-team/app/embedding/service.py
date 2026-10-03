@@ -36,26 +36,46 @@ class EmbeddingService(BaseEmbeddingService):
         self._semaphore = asyncio.Semaphore(settings.embedding_max_concurrency)
 
     def _build_model(self) -> BaseEmbedding:
-        from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-
-        device = settings.embedding_device
-        if device == "cpu":
+        if settings.resolved_llm_api_key:
             try:
-                import torch
+                from llama_index.embeddings.openai import OpenAIEmbedding
 
-                if torch.cuda.is_available():
-                    device = "cuda"
-            except ImportError:
+                return OpenAIEmbedding(
+                    model_name="text-embedding-3-small",
+                    api_key=settings.resolved_llm_api_key,
+                    api_base=settings.resolved_llm_base_url,
+                )
+            except Exception:
                 pass
 
-        self._logger.info(
-            f"Loading embedding model '{settings.embedding_model}' on {device}"
-        )
-        return HuggingFaceEmbedding(
-            model_name=settings.embedding_model,
-            device=device,
-            embed_batch_size=settings.embedding_batch_size,
-        )
+        try:
+            from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+
+            device = settings.embedding_device
+            if device == "cpu":
+                try:
+                    import torch
+
+                    if torch.cuda.is_available():
+                        device = "cuda"
+                except ImportError:
+                    pass
+
+            self._logger.info(
+                f"Loading embedding model '{settings.embedding_model}' on {device}"
+            )
+            return HuggingFaceEmbedding(
+                model_name=settings.embedding_model,
+                device=device,
+                embed_batch_size=settings.embedding_batch_size,
+            )
+        except Exception as e:
+            self._logger.warning(
+                f"Could not load HuggingFaceEmbedding ({e}), using MockEmbedding fallback"
+            )
+            from llama_index.core.embeddings.mock_embed_model import MockEmbedding
+
+            return MockEmbedding(embed_dim=settings.embedding_dim)
 
     async def get_model(self) -> BaseEmbedding:
         if self._model is None:

@@ -1,32 +1,19 @@
-import { useEffect, useState } from "react";
 import { Outlet, Navigate } from "react-router";
-function ProtectedRoute() {
-  const [isLogged, setisLogged] = useState(null);
+import { useAuth } from "../../../context/useAuth";
+import Loading from "../../Loading/Loading";
 
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const response = await fetch("http://localhost:8080/login", {
-          headers: { Authorization: `Bearer ${document.cookie.split("=")[1]}` },
-        });
-        if (response.ok) {
-          setisLogged(true);
-        } else {
-          setisLogged(false);
-        }
-      } catch (error) {
-        console.log(error);
-      }
-    }
-    checkAuth();
-  });
-  if (isLogged === null) {
-    return <div>Loading...</div>; // Or your loading spinner component
+function ProtectedRoute() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="w-screen h-dvh flex items-center justify-center bg-dominant">
+        <Loading />
+      </div>
+    );
   }
-  return isLogged ? (
-    <Outlet></Outlet>
-  ) : (
-    <Navigate to={"/register"} replace={"true"}></Navigate>
-  );
+
+  return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;
 }
+
 export default ProtectedRoute;

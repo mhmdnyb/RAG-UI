@@ -29,6 +29,9 @@ COPY data/ ./data/
 RUN mkdir -p /home/rag/.cache/huggingface /home/rag/.cache/llama_index && \
     chown -R rag:rag /srv/rag /home/rag
 
+ENV PYTHONPATH=/srv/rag
+ENV PYTHONUNBUFFERED=1
+
 USER rag
 
 EXPOSE 8000

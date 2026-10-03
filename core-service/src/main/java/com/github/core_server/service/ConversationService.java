@@ -6,6 +6,7 @@ import com.github.core_server.entity.UserEntity;
 import com.github.core_server.exception.ConversationErrorCode;
 import com.github.core_server.exception.ConversationException;
 import com.github.core_server.helper.ConversationHelper;
+import com.github.core_server.helper.MessageHelper;
 import com.github.core_server.helper.UserHelper;
 import com.github.core_server.mapper.ConversationMapper;
 import com.github.core_server.payload.response.ApiResponse;
@@ -13,6 +14,7 @@ import com.github.core_server.payload.response.ConversationListResponse;
 import com.github.core_server.payload.response.ConversationResponse;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Objects;
@@ -24,6 +26,7 @@ public class ConversationService {
     private final ConversationHelper conversationHelper;
     private final ConversationMapper conversationMapper;
     private final UserHelper userHelper;
+    private final MessageHelper messageHelper;
 
     public ApiResponse<ConversationResponse> createConversation(){
 
@@ -56,6 +59,7 @@ public class ConversationService {
 
     }
 
+    @Transactional
     public ApiResponse<Void> deleteConversation(String conversationId) {
 
         UserEntity currentUser = userHelper.getCurrentUser();
@@ -63,6 +67,7 @@ public class ConversationService {
         ConversationDeleteDto dto = conversationHelper.getDeleteDto(conversationId);
 
         if (Objects.equals(dto.userId(), currentUser.getId())) {
+            messageHelper.deleteByConversationId(dto.ConversationId());
             conversationHelper.deleteById(dto.ConversationId());
 
             return ApiResponse.<Void>builder()

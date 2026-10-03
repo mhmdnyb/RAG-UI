@@ -1,32 +1,19 @@
-import { useEffect, useState } from "react";
 import { Outlet, Navigate } from "react-router";
-function PublicRoute() {
-  const [isLogged, setisLogged] = useState(null);
+import { useAuth } from "../../../context/useAuth";
+import Loading from "../../Loading/Loading";
 
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const response = await fetch("http://localhost:8080/login", {
-          headers: { Authorization: `Bearer ${document.cookie.split("=")[1]}` },
-        });
-        if (response.ok) {
-          setisLogged(false);
-        } else {
-          setisLogged(true);
-        }
-      } catch (error) {
-        console.log(error);
-      }
-    }
-    checkAuth();
-  });
-  if (isLogged === null) {
-    return <div>Loading...</div>; // Or your loading spinner component
+function PublicRoute() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="w-screen h-dvh flex items-center justify-center bg-dominant">
+        <Loading />
+      </div>
+    );
   }
-  return isLogged ? (
-    <Outlet></Outlet>
-  ) : (
-    <Navigate to={"/chat"} replace={"true"}></Navigate>
-  );
+
+  return isAuthenticated ? <Navigate to="/chat" replace /> : <Outlet />;
 }
+
 export default PublicRoute;

@@ -15,6 +15,7 @@ import java.util.Optional;
 public interface ConversationRepository extends JpaRepository<ConversationEntity, Long> {
     @Query("""
     SELECT new com.github.core_server.dto.ConversationListDto(
+        c.conversationId,
         c.name,
         c.createdAt
     )

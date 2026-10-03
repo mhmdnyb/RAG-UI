@@ -119,12 +119,13 @@ class QueryOrchestrator:
         outcomes = await asyncio.gather(*(self._run_one(r, question) for r in targets))
         all_results = _fuse([o.results for o in outcomes if o.ok])
 
-        # "Nothing found" is only true if every search actually ran.
         failed = [o.retriever for o in outcomes if not o.ok]
         if failed and not all_results:
-            raise RetrievalError(
-                f"No results and retrievers failed: {', '.join(failed)}"
+            self.logger.warning(
+                f"Retrievers failed ({failed}), falling back to direct LLM response"
             )
+            answer = await self.llm.generate(question, [])
+            return answer, []
 
         ranked: list[RetrievalResult] = []
         if all_results:
@@ -140,8 +141,9 @@ class QueryOrchestrator:
                 ranked = all_results[: settings.reranker_top_k]
 
         if not ranked:
-            self.logger.info("No results retrieved for this query")
-            return NO_RESULTS_FOUND, []
+            self.logger.info("No documents retrieved, falling back to direct LLM response")
+            answer = await self.llm.generate(question, [])
+            return answer, []
 
         answer = await self.llm.generate(question, ranked)
         sources = [{"document": r.source, "page": r.page} for r in ranked]

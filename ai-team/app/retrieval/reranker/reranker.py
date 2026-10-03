@@ -78,7 +78,7 @@ class Reranker(BaseReranker):
             self._logger.warning(
                 f"Failed to load CrossEncoder ({e}). Reranker will fall back to raw results."
             )
-            raise RerankingError(f"Failed to load reranker model: {e}") from e
+            return None
 
     async def _get_model(self) -> Any:
         if self._model is not None:
@@ -110,6 +110,8 @@ class Reranker(BaseReranker):
 
         try:
             model = await self._get_model()
+            if model is None:
+                return results[:top_k]
             pairs = [[clean_query, r.content] for r in results]
 
             raw_scores = await asyncio.to_thread(self._predict_sync, model, pairs)

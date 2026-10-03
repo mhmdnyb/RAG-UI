@@ -108,6 +108,14 @@ public class MessageService {
                         request.getConversationId()
                 );
 
+        List<MessageEntity> conversationMessages = messageHelper.getConversationMessages(request.getConversationId());
+        for (MessageEntity m : conversationMessages) {
+            if (m.getStatus() == MessageStatus.PROCESSING) {
+                m.setStatus(MessageStatus.NONE);
+                messageHelper.save(m);
+            }
+        }
+
         String sources = objectMapper.writeValueAsString(request.getSources());
 
         MessageEntity message = messageMapper.CallBackToEntity(request, conversation, sources);

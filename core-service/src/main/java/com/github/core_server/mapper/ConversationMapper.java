@@ -19,6 +19,7 @@ public class ConversationMapper {
 
     public ConversationListResponse listDtoToResponse(ConversationListDto dto) {
         return ConversationListResponse.builder()
+                .conversationId(dto.conversationId())
                 .name(dto.name())
                 .createdAt(dto.createdAt().toString().substring(0, 10))
                 .build();

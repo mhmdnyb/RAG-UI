@@ -20,4 +20,8 @@ public class MessageHelper {
     public List<MessageEntity> getConversationMessages(String conversationId) {
         return messageRepository.findAllByConversation_ConversationIdOrderByCreatedAtAsc(conversationId);
     }
+
+    public void deleteByConversationId(Long conversationId) {
+        messageRepository.deleteAllByConversationId(conversationId);
+    }
 }

@@ -58,6 +58,31 @@ class TextRetriever(BaseRetriever):
             embed_model=embed_model,
         )
 
+    def _build_index_sync_fallback(
+        self, embed_model: BaseEmbedding | None
+    ) -> VectorStoreIndex:
+        from pathlib import Path
+        from llama_index.core import StorageContext, load_index_from_storage, VectorStoreIndex
+
+        storage_dir = Path(__file__).resolve().parents[3] / "data" / "storage"
+        if storage_dir.exists() and (storage_dir / "default__vector_store.json").exists():
+            storage_context = StorageContext.from_defaults(persist_dir=str(storage_dir))
+            return load_index_from_storage(storage_context, embed_model=embed_model)
+
+        txt_path = Path(__file__).resolve().parents[3] / "data" / "student_regulations.txt"
+        if txt_path.exists():
+            from app.retrieval.text_pipeline.parser import parse_regulations, to_text_nodes
+
+            text = txt_path.read_text(encoding="utf-8")
+            articles = parse_regulations(text)
+            nodes = to_text_nodes(articles)
+            index = VectorStoreIndex(nodes=nodes, embed_model=embed_model)
+            storage_dir.mkdir(parents=True, exist_ok=True)
+            index.storage_context.persist(persist_dir=str(storage_dir))
+            return index
+
+        raise RuntimeError("No regulations source or storage found")
+
     async def _get_index(self) -> VectorStoreIndex:
         if self._index is not None:
             return self._index
@@ -75,17 +100,27 @@ class TextRetriever(BaseRetriever):
             if hasattr(self._embedder, "get_model"):
                 embed_model = await self._embedder.get_model()
 
-            if self._vector_store is None:
-                self._vector_store = await asyncio.to_thread(
-                    self._build_vector_store_sync
-                )
+            try:
+                if self._vector_store is None:
+                    self._vector_store = await asyncio.to_thread(
+                        self._build_vector_store_sync
+                    )
 
-            self._index = await asyncio.to_thread(
-                self._build_index_sync,
-                self._vector_store,
-                embed_model,
-            )
-            return self._index
+                self._index = await asyncio.to_thread(
+                    self._build_index_sync,
+                    self._vector_store,
+                    embed_model,
+                )
+                return self._index
+            except Exception as e:
+                self._logger.info(
+                    f"PGVectorStore unavailable ({e}), using local persisted vector store"
+                )
+                self._index = await asyncio.to_thread(
+                    self._build_index_sync_fallback,
+                    embed_model,
+                )
+                return self._index
 
     async def retrieve(self, query: str, top_k: int = 5) -> list[RetrievalResult]:
         """Search vector database and return top_k matching chunks."""
@@ -109,11 +144,18 @@ class TextRetriever(BaseRetriever):
                 score = float(getattr(item, "score", 0.0) or 0.0)
                 metadata = dict(getattr(node, "metadata", {}) or {})
 
-                source = (
-                    metadata.get("title")
+                article = (
+                    metadata.get("parent_title")
                     or metadata.get("article_id")
-                    or DEFAULT_SOURCE_LABEL
+                    or ""
                 )
+                chunk_title = metadata.get("title", "")
+                if article and chunk_title and chunk_title != article:
+                    source = f"{DEFAULT_SOURCE_LABEL} ({article} - {chunk_title})"
+                elif article:
+                    source = f"{DEFAULT_SOURCE_LABEL} ({article})"
+                else:
+                    source = DEFAULT_SOURCE_LABEL
 
                 results.append(
                     RetrievalResult(
@@ -127,5 +169,5 @@ class TextRetriever(BaseRetriever):
             return results[:top_k]
 
         except Exception as e:
-            self._logger.error(f"Text retrieval failed: {e}", exc_info=True)
-            raise RetrievalError(f"Text retrieval failed: {e}") from e
+            self._logger.warning(f"Text retrieval failed: {e}")
+            return []

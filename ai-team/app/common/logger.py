@@ -26,6 +26,10 @@ class _RequestIdFilter(logging.Filter):
 
 
 def setup_logging(level: int = logging.INFO) -> None:
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
     global _initialized
     if _initialized:
         return
