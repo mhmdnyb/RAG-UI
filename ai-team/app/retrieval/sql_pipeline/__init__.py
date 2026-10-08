@@ -1,1 +1,0 @@
-# SQL pipeline retrieval module
