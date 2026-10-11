@@ -108,8 +108,4 @@ RAG-UI/
 └── README.md                # Project documentation
 ```
 
----
 
-<p align="center">
-  Built with ❤️ for the students and faculty of the University of Science and Culture
-</p>
